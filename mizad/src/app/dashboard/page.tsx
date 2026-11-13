@@ -1,0 +1,147 @@
+'use client'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { sb } from '@/lib/supabase-browser'
+import { useLang } from '@/components/Lang'
+import { aedToFils, fmt } from '@/lib/money'
+
+export default function Dash() {
+  const { t, lang } = useLang(); const db = sb(); const router = useRouter()
+  const [v, setV] = useState<any>(null), [ready, setReady] = useState(false), [tab, setTab] = useState('auction'), [toast, setToast] = useState('')
+  const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
+  const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
+  const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '' }), [file, setFile] = useState<File | null>(null)
+  const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
+  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
+
+  const load = useCallback(async () => {
+    const { data: { user } } = await db.auth.getUser(); if (!user) return router.push('/login')
+    const { data: vv } = await db.from('vendors').select('*').eq('owner_id', user.id).maybeSingle(); setV(vv); setReady(true); if (!vv) return
+    const q = (tb: string) => db.from(tb).select('*').eq('vendor_id', vv.id)
+    const [a, b, c, d, e, f] = await Promise.all([
+      q('auction_items').order('position'), q('bidders').order('created_at', { ascending: false }),
+      q('bids').order('created_at', { ascending: false }).limit(30), q('support_contributions').order('created_at', { ascending: false }).limit(30),
+      db.from('item_service_fees').select('*,auction_items(name)').eq('vendor_id', vv.id), q('invoices').order('created_at', { ascending: false })])
+    setItems(a.data || []); setBidders(b.data || []); setBids(c.data || []); setSup(d.data || []); setFees(e.data || []); setInv(f.data || [])
+  }, [])
+  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!v) return; const f = `vendor_id=eq.${v.id}`
+    const ch = db.channel('dash-' + v.id)
+    for (const table of ['auction_items', 'bids', 'support_contributions', 'bidders']) ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: f }, load)
+    ch.subscribe(); return () => { db.removeChannel(ch) }
+  }, [v?.id, load])
+
+  const post = async (url: string, body: any = {}) => (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json()
+  const act = async (action: string, itemId: string) => { const j = await post('/api/vendor/item', { itemId, action }); j.error ? say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) : load() }
+  const setStatus = async (id: string, status: string) => { await db.from('bidders').update({ status }).eq('id', id); load() }
+  const pay = async (kind: string, invoiceId?: string) => { const j = await post('/api/vendor/pay', { kind, invoiceId }); if (j.url) location.href = j.url; else say(t('GENERIC')) }
+  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname }); error ? say(error.message) : load() }
+  const addItem = async () => {
+    let image_url = null
+    if (file) { const p = `${v.id}/${crypto.randomUUID()}`; const { error } = await db.storage.from('products').upload(p, file); if (!error) image_url = db.storage.from('products').getPublicUrl(p).data.publicUrl }
+    const { data: au } = await db.from('auctions').select('id').eq('vendor_id', v.id).order('created_at', { ascending: false }).limit(1)
+    const { error } = await db.from('auction_items').insert({ vendor_id: v.id, auction_id: au![0].id, name: form.name, description: form.description, image_url,
+      position: items.length, start_price_fils: aedToFils(form.start), increment_fils: aedToFils(form.inc) })
+    if (error) return say(error.message)
+    setForm({ name: '', description: '', start: '', inc: '' }); setFile(null); load()
+  }
+  const newSession = async () => { await db.from('auctions').insert({ vendor_id: v.id, title: new Date().toLocaleDateString() }); say('✓') }
+  const statement = (i: any) => {
+    const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || '').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
+    const blob = new Blob([`item,fee_AED\n${rows.join('\n')}\ntotal,${(i.total_fils / 100).toFixed(2)}`], { type: 'text/csv' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mizad-statement-${i.id.slice(0, 8)}.csv`; a.click()
+  }
+
+  if (!ready) return <main className="wrap"><div className="empty">…</div></main>
+  if (!v) return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('create_page')}</h2>
+    <label>{t('store_name')}</label><input value={vname} onChange={e => setVname(e.target.value)} />
+    <label>{t('slug')}</label><input dir="ltr" value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-auction" />
+    <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
+  if (v.status === 'pending_activation') return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('activate_title')}</h2>
+    <p className="muted">{t('activate_text')}</p><button className="btn gold full" onClick={() => pay('activation')}>{t('activate_btn')}</button></div></main>)
+  if (v.status === 'suspended') return <main className="wrap"><div className="notice">{t('suspended')}</div></main>
+
+  const cur = items.find(i => i.status === 'live') || items.find(i => i.status === 'paused') || items.find(i => i.status === 'queued')
+  const supTotal = cur ? cur.current_price_fils - cur.base_bid_fils : 0
+  const unbilled = fees.filter(f => !f.invoice_id).reduce((s, f) => s + f.amount_fils, 0)
+  const openInv = inv.filter(i => i.status === 'open').reduce((s, i) => s + i.total_fils, 0)
+  const link = typeof location !== 'undefined' ? `${location.origin}/${v.slug}/live` : ''
+  const pending = bidders.filter(b => b.status === 'pending'), approved = bidders.filter(b => b.status === 'approved')
+  const stPill = (s: string) => s === 'live' ? 'green' : s === 'paused' ? 'gold' : ''
+
+  return (
+    <main className="wrap">
+      <div className="tabs">{['auction', 'bidders', 'products', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{t('tab_' + k)}</button>)}</div>
+      <div className="notice">{t('share_link')}: <b dir="ltr">{link}</b></div>
+
+      {tab === 'auction' && <div className="grid">
+        <div>
+          <div className="card section">
+            {!cur ? <div className="empty">{t('no_item')}</div> : (<>
+              <div className="row"><h2 style={{ margin: 0 }}>{cur.name}</h2><span className={'pill ' + stPill(cur.status)}>{cur.status}</span></div>
+              <div className="stats" style={{ marginTop: 16 }}>
+                <div className="stat"><span className="muted">{t('current_bid')}</span><b>{fmt(cur.current_price_fils, lang)}</b></div>
+                <div className="stat"><span className="muted">{t('winner')}</span><b style={{ fontSize: 16 }}>{cur.leader_name || '—'}</b></div>
+                <div className="stat"><span className="muted">{t('bids_count')}</span><b>{cur.bid_count}</b></div>
+              </div>
+              <div className="kv"><span>{t('base_bid')}</span><b>{fmt(cur.base_bid_fils, lang)}</b></div>
+              <div className="kv"><span>{t('support_total')}</span><b>{fmt(supTotal, lang)}</b></div>
+              <div className="bid-action">
+                <button className="btn green" disabled={cur.status === 'live' || cur.status === 'sold'} onClick={() => act('open', cur.id)}>{t('open')}</button>
+                <button className="btn light" disabled={cur.status !== 'live'} onClick={() => act('pause', cur.id)}>{t('pause')}</button>
+                <button className="btn red" disabled={cur.status === 'queued'} onClick={() => act('close', cur.id)}>{t('close')}</button>
+                <button className="btn" onClick={() => act('next', cur.id)}>{t('next')}</button>
+              </div></>)}
+          </div>
+          <div className="card"><h3>{t('bids')}</h3>
+            {bids.length === 0 ? <div className="empty">{t('no_bids')}</div> : <div className="bidlist">{bids.map(b => (
+              <div className="bidrow" key={b.id}><div><strong>{b.bidder_name}</strong><br /><small>{new Date(b.created_at).toLocaleTimeString()}</small></div><span>{fmt(b.amount_fils, lang)}</span></div>))}</div>}
+          </div>
+        </div>
+        <div className="card"><h3>{t('ledger')}</h3>
+          {sup.length === 0 ? <div className="empty">—</div> : <div className="bidlist">{sup.map(s => (
+            <div className="bidrow" key={s.id}><div><strong>{s.supporter_name} → {s.beneficiary_name}</strong><br /><small>{fmt(s.price_before_fils, lang)} → {fmt(s.price_after_fils, lang)}</small></div>
+              <div style={{ textAlign: 'end' }}><b>{fmt(s.amount_fils, lang)}</b><br /><span className={'pill ' + (s.status === 'authorized' || s.status === 'captured' ? 'green' : s.status === 'pending_payment' ? 'gold' : 'red')}>{s.status}</span></div></div>))}</div>}
+        </div>
+      </div>}
+
+      {tab === 'bidders' && <div className="grid">
+        <div className="card"><h3>{t('pending')} ({pending.length})</h3><div className="bidlist">{pending.map(b => (
+          <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{b.phone}</small></div>
+            <div className="person-actions"><button className="btn green" onClick={() => setStatus(b.id, 'approved')}>{t('approve')}</button><button className="btn red" onClick={() => setStatus(b.id, 'rejected')}>{t('reject')}</button></div></div>))}</div></div>
+        <div className="card"><h3>{t('approved')} ({approved.length})</h3><div className="bidlist">{approved.map(b => (
+          <div className="person" key={b.id}><b>{b.name}</b><button className="btn red" onClick={() => setStatus(b.id, 'suspended')}>{t('suspend')}</button></div>))}</div></div>
+      </div>}
+
+      {tab === 'products' && <div className="grid">
+        <div className="card"><h3>{t('add_item')}</h3>
+          <label>{t('name')}</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <label>{t('desc')}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <label>{t('start_price')} (AED)</label><input inputMode="decimal" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
+          <label>{t('increment')} (AED, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
+          <label>{t('image')}</label><input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} />
+          <button className="btn gold full" disabled={!form.name || !form.start || !form.inc} onClick={addItem}>{t('save')}</button>
+          <button className="btn light full" onClick={newSession}>{t('new_session')}</button></div>
+        <div className="card"><div className="bidlist">{items.map(i => (
+          <div className="person" key={i.id}><div><b>{i.name}</b><br /><small className="muted">{fmt(i.start_price_fils, lang)} · +{fmt(i.increment_fils, lang)}</small></div>
+            <div className="person-actions"><span className={'pill ' + stPill(i.status)}>{i.status}</span>
+              {(i.status === 'queued' || i.status === 'paused') && <button className="btn green" onClick={() => act('open', i.id)}>{t('open')}</button>}</div></div>))}</div></div>
+      </div>}
+
+      {tab === 'billing' && <div className="grid">
+        <div className="card"><div className="stats">
+          <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang)}</b></div>
+          <div className="stat"><span className="muted">{t('chargeable')}</span><b>{fees.length}</b></div>
+          <div className="stat"><span className="muted">{t('fee_item')}</span><b>{fmt(fees[0]?.amount_fils ?? 250, lang)}</b></div></div>
+          <button className="btn full" disabled={!unbilled} onClick={async () => { await post('/api/vendor/invoice'); load() }}>{t('gen_invoice')}</button></div>
+        <div className="card"><h3>{t('invoices')}</h3><div className="bidlist">{inv.map(i => (
+          <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang)}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
+            <div className="person-actions"><span className={'pill ' + (i.status === 'paid' ? 'green' : 'gold')}>{i.status === 'paid' ? t('paid') : t('open_s')}</span>
+              <button className="btn light" onClick={() => statement(i)}>{t('download')}</button>
+              {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
+      </div>}
+      {toast && <div className="toast">{toast}</div>}
+    </main>
+  )
+}
