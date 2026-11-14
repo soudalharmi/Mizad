@@ -10,6 +10,16 @@ import Link from 'next/link'
 
 const genCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint8Array(5)); return 'MZ-' + Array.from(r, x => A[x % A.length]).join('') }
 
+const TAB_ICONS: Record<string, JSX.Element> = {
+  auction: <><circle cx="12" cy="12" r="2" /><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2" /></>,
+  sessions: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
+  sales: <><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" /><circle cx="7.5" cy="7.5" r="1" /></>,
+  bidders: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></>,
+  products: <><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></>,
+  billing: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
+}
+const COLORS: Record<string, string> = { yellow: '#f2c230', blue: '#3b82f6', red: '#d93025', green: '#2e9e5b' }
+
 export default function Dash() {
   const { t, lang } = useLang(); const db = sb(); const router = useRouter()
   const [v, setV] = useState<any>(null), [ready, setReady] = useState(false), [tab, setTab] = useState('auction'), [toast, setToast] = useState('')
@@ -18,7 +28,7 @@ export default function Dash() {
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
@@ -156,8 +166,21 @@ export default function Dash() {
 
   return (
     <main className="wrap">
-      <div className="row section" style={{ justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}><Link href="/explore"><button className="btn light">{t('explore')}</button></Link><button className="btn light" onClick={() => setShowProf(true)}>{t('my_host_profile')}</button><button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button><button className="btn light" onClick={logout}>{t('logout')}</button></div>
-      <div className="tabs">{['auction', 'sessions', 'sales', 'bidders', 'products', 'history', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{t('tab_' + k)}{(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', marginInlineStart: 8, borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 12, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
+      <div className="row section" style={{ gap: 8 }}>
+        <h2 style={{ margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</h2>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Link href="/explore"><button className="btn light">{t('explore')}</button></Link>
+          <button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button>
+          <button className="btn light" onClick={() => setShowProf(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 6px' }}>
+            <span style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+              {v.logo_url ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (v.name || '?').charAt(0)}</span>
+            {t('my_host_profile')}</button>
+        </div>
+      </div>
+      <div className="tabs">{['auction', 'sessions', 'sales', 'bidders', 'products', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TAB_ICONS[k]}</svg>
+        <span>{t('tab_' + k)}</span>
+        {(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ position: 'absolute', top: 5, insetInlineEnd: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 20, padding: '0 5px', borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 11, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
       <div className="notice">{t('share_link')}: <b dir="ltr">{link}</b></div>
 
       {tab === 'auction' && <><div className="card section">
@@ -244,10 +267,34 @@ export default function Dash() {
           {mode === 'photo' ? <input type="file" accept="image/*" style={{ marginTop: 10 }} onChange={e => setFile(e.target.files?.[0] || null)} />
             : <div className="notice" style={{ marginTop: 10 }}><div className="row"><b dir="ltr" style={{ fontSize: 22, letterSpacing: 2 }}>{code}</b><button className="btn light" onClick={() => setCode(genCode())}>{t('regenerate')}</button></div><div className="muted" style={{ marginTop: 6 }}>{t('code_hint')}</div></div>}
           <button className="btn gold full" disabled={!form.name || !form.start || !form.inc} onClick={addItem}>{t('save')}</button></div>
-        <div className="card"><div className="bidlist">{items.map(i => (
-          <div className="person" key={i.id}><div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {i.auction_type === 'custom' && <span className="pill">{t('custom_badge')}</span>}<br /><small className="muted">{fmt(secrets[i.id]?.start_price_fils ?? i.start_price_fils, lang)} · +{fmt(secrets[i.id]?.increment_fils ?? i.increment_fils, lang)}</small>{priv[i.id] && (priv[i.id].owner_name || priv[i.id].owner_phone || priv[i.id].asked_price_fils != null) && <><br /><small className="muted">{t('owner_name')}: {priv[i.id].owner_name || '—'} <span dir="ltr">{ph(priv[i.id].owner_phone)}</span>{priv[i.id].asked_price_fils != null && <> · {t('asked_price')}: {fmt(priv[i.id].asked_price_fils, lang)}</>}</small></>}</div>
-            <div className="person-actions"><span className={'pill ' + stPill(i.status)}>{i.status}</span>
-              {(i.status === 'queued' || i.status === 'paused') && <button className="btn green" disabled={!liveSession} onClick={() => act('open', i.id)}>{t('open')}</button>}</div></div>))}</div></div>
+        <div className="card">{(() => {
+          const q = items.filter(i => i.status === 'queued' || i.status === 'paused')
+          const grpOf = (i: any) => String(priv[i.id]?.grp || '')
+          const groups = Array.from(new Set<string>(q.map(grpOf).filter(Boolean))).sort()
+          const shown = q.filter(i => (cf === 'all' || priv[i.id]?.color === cf) && (gf === 'all' || grpOf(i) === (gf === '__none' ? '' : gf)))
+          const sections = [...groups.filter(g => shown.some(i => grpOf(i) === g)).map(g => [g, shown.filter(i => grpOf(i) === g)] as [string, any[]]), ...(shown.some(i => !grpOf(i)) ? [['', shown.filter(i => !grpOf(i))] as [string, any[]]] : [])]
+          const row = (i: any) => { const p = priv[i.id], ge = grpEdit?.id === i.id; return (
+            <div className="person" key={i.id} style={{ borderInlineStart: '5px solid ' + (COLORS[p?.color] || 'transparent'), alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {i.auction_type === 'custom' && <span className="pill">{t('custom_badge')}</span>}<br /><small className="muted">{fmt(secrets[i.id]?.start_price_fils ?? i.start_price_fils, lang)} · +{fmt(secrets[i.id]?.increment_fils ?? i.increment_fils, lang)}</small>
+                {p && (p.owner_name || p.owner_phone || p.asked_price_fils != null) && <><br /><small className="muted">{t('owner_name')}: {p.owner_name || '—'} <span dir="ltr">{ph(p.owner_phone)}</span>{p.asked_price_fils != null && <> · {t('asked_price')}: {fmt(p.asked_price_fils, lang)}</>}</small></>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  {Object.entries(COLORS).map(([k, c]) => <button key={k} aria-label={k} onClick={() => savePriv(i.id, { color: p?.color === k ? null : k })} style={{ width: 24, height: 24, borderRadius: '50%', background: c, padding: 0, border: p?.color === k ? '3px solid #20211f' : '2px solid #fff', boxShadow: '0 0 0 1px #d8d4ca' }} />)}
+                  <button className="btn light" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setGrpEdit(ge ? null : { id: i.id, val: grpOf(i) })}>{grpOf(i) ? '📁 ' + grpOf(i) : '+ ' + t('add_group')}</button></div>
+                {ge && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><input list="grps" value={grpEdit.val} maxLength={40} onChange={e => setGrpEdit({ ...grpEdit, val: e.target.value })} placeholder={t('group_label')} />
+                  <button className="btn gold" onClick={async () => { await savePriv(i.id, { grp: grpEdit.val.trim() || null }); setGrpEdit(null) }}>{t('save')}</button></div>}</div>
+              <div className="person-actions"><span className={'pill ' + stPill(i.status)}>{i.status}</span>
+                <button className="btn green" disabled={!liveSession} onClick={() => act('open', i.id)}>{t('open')}</button></div></div>) }
+          return (<>
+            <datalist id="grps">{groups.map(g => <option key={g} value={g} />)}</datalist>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+              <button className={'btn ' + (cf === 'all' ? 'gold' : 'light')} style={{ padding: '4px 10px', fontSize: 13 }} onClick={() => setCf('all')}>{t('all')}</button>
+              {Object.entries(COLORS).map(([k, c]) => <button key={k} aria-label={k} onClick={() => setCf(cf === k ? 'all' : k)} style={{ width: 26, height: 26, borderRadius: '50%', background: c, padding: 0, border: cf === k ? '3px solid #20211f' : '2px solid #fff', boxShadow: '0 0 0 1px #d8d4ca' }} />)}</div>
+            {groups.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>{['all', ...groups, '__none'].map(g => <button key={g} className={'btn ' + (gf === g ? 'gold' : 'light')} style={{ padding: '4px 10px', fontSize: 13 }} onClick={() => setGf(g)}>{g === 'all' ? t('all') : g === '__none' ? t('ungrouped') : g}</button>)}</div>}
+            {q.length === 0 ? <div className="empty">{t('no_queued')}</div> : shown.length === 0 ? <div className="empty">{t('no_results')}</div> :
+              sections.map(([g, list]) => <div key={g || '__none'} style={{ marginBottom: 12 }}>
+                {(groups.length > 0) && <div className="muted" style={{ fontWeight: 700, margin: '4px 2px 6px' }}>{g ? '📁 ' + g : t('ungrouped')} ({list.length})</div>}
+                <div className="bidlist">{list.map(row)}</div></div>)}</>)
+        })()}</div>
       </div>}
 
       {tab === 'sales' && <div className="card"><h3>{t('tab_sales')}</h3>
@@ -283,20 +330,6 @@ export default function Dash() {
               {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}</div>)
           })}</div>}</div>}
 
-      {tab === 'history' && <div className="card"><h3>{t('sold_items')}</h3>
-        {items.filter(i => i.status === 'sold' || i.status === 'unsold').length === 0 ? <div className="empty">{t('no_history')}</div> : <div className="bidlist">
-          {items.filter(i => i.status === 'sold' || i.status === 'unsold').sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0)).map(i => {
-            const w = bidders.find(b => b.id === i.leader_bidder_id)
-            return (<div className="person" key={i.id}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <div style={{ width: 60, height: 60, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 12 }}>{i.ref_code || '📿'}</b>}</div>
-                <div><b>{i.name}</b> {i.ref_code && i.image_url && <span className="pill gold" dir="ltr">{i.ref_code}</span>}<br />
-                  {i.status === 'sold' ? <><span>{t('winner')}: <b>{i.leader_name}</b></span><br /><small className="muted" dir="ltr">{w?.phone ? (String(w.phone).startsWith('+') ? w.phone : '+' + w.phone) : ''}</small></> : <span className="pill red">{t('unsold')}</span>}<br />
-                  <small className="muted">{t('date')}: {i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</small></div></div>
-              {i.status === 'sold' && <b>{fmt(i.current_price_fils, lang)}</b>}</div>)
-          })}</div>}</div>}
-
       {tab === 'billing' && <div className="grid">
         <div className="card"><div className="stats">
           <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang)}</b></div>
@@ -310,6 +343,7 @@ export default function Dash() {
               {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
       </div>}
       {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
+      <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
       {showProf && <HostProfile vendor={v} onClose={() => { setShowProf(false); load() }} />}
       {toast && <div className="toast">{toast}</div>}
     </main>
