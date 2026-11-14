@@ -31,6 +31,12 @@ const ar: Record<string, string> = {
   your_price: 'اكتب سعرك (درهم)', send_offer: 'إرسال العرض', offer_sent: 'تم إرسال عرضك، بانتظار رد صاحب المزاد', offer_pending: 'عرضك بانتظار الرد', offer_rejected: 'تم رفض عرضك، قدّم عرضاً أعلى',
   custom_badge: 'مزاد مخصص', custom_wait: 'قدّم عرضك وسيرد عليه صاحب المزاد. عند القبول تظهر قيمة الزيادة للجميع.', tab_history: 'السجل', sold_items: 'المنتجات المباعة', no_history: 'لا توجد منتجات مباعة بعد', date: 'التاريخ', sold: 'مباع', unsold: 'لم يُبع',
   OFFER_ONLY: 'هذا مزاد مخصص: قدّم عرضاً بدلاً من المزايدة', BELOW_REJECTED: 'يجب أن يكون عرضك أعلى من العرض المرفوض', host_start: 'سعر البداية', host_inc: 'الزيادة',
+  stream_mode: 'وضع البث', exit_stream: 'خروج', stream_wait: 'ننتظر المنتج التالي…', stream_congrats: 'مبروك', stream_leader: 'المزايد الحالي', stream_highest: 'أعلى مزايدة',
+  stream_custom: 'مزاد مخصص — قدّم عرضك الآن', stream_paused: 'المزاد متوقف مؤقتاً', stream_requests: 'طلبات انضمام',
+  tab_sessions: 'جلساتك', sessions_title: 'جلساتك السابقة', no_sessions: 'لا توجد جلسات بعد', session_live: 'الجلسة مباشرة الآن', session_none: 'لا توجد جلسة مباشرة. ابدأ جلسة جديدة لتتمكن من فتح المزاد على المنتجات.',
+  start_session: 'بدء جلسة جديدة', end_session: 'إنهاء الجلسة', session_since: 'منذ', session_title_ph: 'اسم الجلسة (اختياري)', participants: 'المشاركون', total_sales: 'إجمالي المبيعات', products_sold: 'المنتجات المباعة', returned: 'على المرجوع', live_now: 'مباشرة', ended: 'منتهية',
+  NO_SESSION: 'ابدأ جلسة جديدة أولاً', SESSION_LIVE: 'لديك جلسة مباشرة بالفعل', PHONE_TAKEN: 'رقم الجوال مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك', NAME_TAKEN: 'الاسم مستخدم مسبقاً، اختر اسماً آخر', BAD_PHONE: 'رقم الجوال غير صحيح',
+  no_account: 'ليس لديك حساب؟', create_platform: 'أنشئ حساباً في المنصة', platform_hint: 'حساب واحد في مِزاد يكفي للمشاركة في مزادات جميع المضيفين. بعد التسجيل تطلب الموافقة من كل مضيف بضغطة واحدة.', for_bidders: 'للمزايدين', host_login: 'دخول أصحاب المزادات',
 }
 const en: Record<string, string> = {
   tagline: 'Live Misbaha auctions', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
@@ -65,5 +71,11 @@ const en: Record<string, string> = {
   your_price: 'Enter your price (AED)', send_offer: 'Send offer', offer_sent: 'Offer sent, waiting for the host', offer_pending: 'Your offer is waiting for a reply', offer_rejected: 'Your offer was rejected, offer a higher price',
   custom_badge: 'Custom auction', custom_wait: 'Send your offer and the host will reply. When accepted, the increment becomes visible to everyone.', tab_history: 'History', sold_items: 'Sold items', no_history: 'No sold items yet', date: 'Date', sold: 'Sold', unsold: 'Unsold',
   OFFER_ONLY: 'This is a custom auction: send an offer instead of bidding', BELOW_REJECTED: 'Your offer must be higher than the rejected offer', host_start: 'Start price', host_inc: 'Increment',
+  stream_mode: 'Streaming mode', exit_stream: 'Exit', stream_wait: 'Waiting for the next item…', stream_congrats: 'Congratulations', stream_leader: 'Current bidder', stream_highest: 'Highest bid',
+  stream_custom: 'Custom auction: send your offer now', stream_paused: 'Auction paused', stream_requests: 'Join requests',
+  tab_sessions: 'Your sessions', sessions_title: 'Your previous sessions', no_sessions: 'No sessions yet', session_live: 'Session is live now', session_none: 'No live session. Start a new session to open the auction on products.',
+  start_session: 'Start new session', end_session: 'End session', session_since: 'since', session_title_ph: 'Session name (optional)', participants: 'Participants', total_sales: 'Total sales', products_sold: 'Products sold', returned: 'Returned (unsold)', live_now: 'Live', ended: 'Ended',
+  NO_SESSION: 'Start a new session first', SESSION_LIVE: 'You already have a live session', PHONE_TAKEN: 'This phone number is already registered, sign in instead', NAME_TAKEN: 'This name is already taken, choose another', BAD_PHONE: 'Invalid phone number',
+  no_account: 'No account?', create_platform: 'Create a MIZAD account', platform_hint: 'One MIZAD account lets you join every host\'s auctions. After signing up, request approval from each host with one tap.', for_bidders: 'For bidders', host_login: 'Host login',
 }
 export const dict = { ar, en }
