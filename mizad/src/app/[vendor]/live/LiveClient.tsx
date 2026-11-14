@@ -1,4 +1,5 @@
 'use client'
+import SocialLinks from '@/components/SocialLinks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
@@ -89,8 +90,9 @@ export default function Live({ slug }: { slug: string }) {
   const contrib = amount - (item?.current_price_fils || 0)
   return (
     <main className="wrap" style={{ maxWidth: 560 }}>
-      <div className="row section"><h2 style={{ margin: 0 }}>{vendor.name}</h2><div className="row" style={{ gap: 8 }}>{vendor.logo_url && <img src={vendor.logo_url} height={40} alt="" />}
+      <div className="row section"><div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>{vendor.logo_url && <img src={vendor.logo_url} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />}<h2 style={{ margin: 0 }}>{vendor.name}</h2></div><div className="row" style={{ gap: 8 }}><a href="/explore" className="pill" style={{ textDecoration: 'none' }}>{t('explore')}</a>
         {user && <button onClick={() => setShowProfile(true)} style={{ width: 40, height: 40, borderRadius: 99, background: '#eadcc5', overflow: 'hidden', padding: 0, fontSize: 18 }} aria-label={t('my_profile')}>{prof?.avatar_url ? <img src={prof.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}</button>}</div></div>
+      {(vendor.bio || Object.values(vendor.socials || {}).some(Boolean)) && <div className="card section">{vendor.bio && <div>{vendor.bio}</div>}<SocialLinks socials={vendor.socials} /></div>}
       <div className="card section">
         {!item ? <div className="empty">{t('no_item')}</div> : (<>
           <div className="product">
