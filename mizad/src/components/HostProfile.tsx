@@ -18,7 +18,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
   }
   const save = async () => {
     setBusy(true)
-    const clean = Object.fromEntries(Object.entries(soc).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v))
+    const clean = Object.fromEntries(Object.entries(soc).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v))
     const { error } = await db.from('vendors').update({ name: name.trim(), bio: bio.trim() || null, socials: clean, logo_url: logo || null }).eq('id', vendor.id)
     setBusy(false); if (error) return setMsg(error.message)
     onClose()
