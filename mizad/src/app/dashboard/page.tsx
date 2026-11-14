@@ -192,11 +192,11 @@ export default function Dash() {
               <div className="person" key={o.id}><div><b>{o.bidder_name}</b><br /><small className="muted">{new Date(o.created_at).toLocaleTimeString()}</small></div>
                 <div className="person-actions"><b style={{ alignSelf: 'center' }}>{fmt(o.amount_fils, lang)}</b><button className="btn green" onClick={() => decide(o.id, true)}>{t('accept')}</button><button className="btn red" onClick={() => decide(o.id, false)}>{t('reject')}</button></div></div>))}</div>}
           </div>}
-          <div className="card"><div className="row"><h3 style={{ margin: 0 }}>{t('bids')}</h3>{bids.length > 0 && (() => { const ids = Array.from(new Set(bids.map(x => x.item_id))); const allOpen = ids.every(id => openBids[id] ?? id === cur?.id); return <button className="btn light" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setOpenBids(Object.fromEntries(ids.map(id => [id, !allOpen])))}>{allOpen ? t('collapse_all') : t('expand_all')}</button> })()}</div>
-            {bids.length === 0 ? <div className="empty">{t('no_bids')}</div> : <div className="bidlist" style={{ marginTop: 10 }}>{Array.from(new Set(bids.map(x => x.item_id))).map(id => {
+          <div className="card"><div className="row"><h3 style={{ margin: 0 }}>{t('bids')}</h3>{bids.length > 0 && (() => { const ids: string[] = Array.from(new Set<string>(bids.map(x => x.item_id))); const allOpen = ids.every(id => openBids[id] ?? id === cur?.id); return <button className="btn light" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setOpenBids(Object.fromEntries(ids.map(id => [id, !allOpen])))}>{allOpen ? t('collapse_all') : t('expand_all')}</button> })()}</div>
+            {bids.length === 0 ? <div className="empty">{t('no_bids')}</div> : <div className="bidlist" style={{ marginTop: 10 }}>{Array.from(new Set<string>(bids.map(x => x.item_id))).map((id: string) => {
               const it = items.find(x => x.id === id), list = bids.filter(x => x.item_id === id), open = openBids[id] ?? id === cur?.id
               return (<div key={id}>
-                <button className="person" style={{ width: '100%', cursor: 'pointer', textAlign: 'start' }} onClick={() => setOpenBids(o => ({ ...o, [id]: !open }))}>
+                <button className="person" style={{ width: '100%', cursor: 'pointer', textAlign: 'start' }} onClick={() => setOpenBids(o => ({ ...o, [String(id)]: !open }))}>
                   <span><b>{it?.name || '—'}</b> {it?.ref_code && <span className="pill gold" dir="ltr">{it.ref_code}</span>}<br /><small className="muted">{list.length} {t('bids_count')} · {fmt(Math.max(...list.map(x => x.amount_fils)), lang)}</small></span><span>{open ? '▲' : '▼'}</span></button>
                 {open && <div className="bidlist" style={{ marginTop: 6, paddingInlineStart: 8 }}>{list.map(b => (
                   <div className="bidrow" key={b.id}><div><strong>{b.bidder_name}</strong><br /><small>{new Date(b.created_at).toLocaleTimeString()}</small></div><span>{fmt(b.amount_fils, lang)}</span></div>))}</div>}
@@ -222,7 +222,7 @@ export default function Dash() {
         <div className="card"><h3>{t('approved')} ({ap.length})</h3><div className="bidlist">{ap.length === 0 && bq && <div className="empty">{t('no_results')}</div>}{ap.map(b => (
           <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{ph(b.phone)}</small></div><button className="btn red" onClick={() => setStatus(b.id, 'suspended')}>{t('suspend')}</button></div>))}</div></div>
         <div className="card"><h3>{t('suspended_hdr')} ({su.length})</h3><div className="bidlist">{su.length === 0 && bq && <div className="empty">{t('no_results')}</div>}{su.map(b => (
-          <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{ph(b.phone)}</small></div><button className="btn green" onClick={() => setStatus(b.id, 'approved')}>{t('reactivate')}</button></div>))}</div></div>
+          <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{ph(b.phone)}</small></div><button className="btn green" onClick={() => setStatus(b.id, 'approved')}>{t('reactivate_bidder')}</button></div>))}</div></div>
       </div></>)
         })()}</>}
 
