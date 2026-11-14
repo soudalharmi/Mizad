@@ -26,7 +26,7 @@ export default function Live({ slug }: { slug: string }) {
   const [vendor, setVendor] = useState<any>(null), [item, setItem] = useState<any>(null), [bids, setBids] = useState<any[]>([])
   const [user, setUser] = useState<any>(null), [me, setMe] = useState<any>(null), [amount, setAmount] = useState(0)
   const [modal, setModal] = useState<'' | 'choose' | 'support' | 'pay'>(''), [secret, setSecret] = useState(''), [msg, setMsg] = useState(''), [busy, setBusy] = useState(false)
-  const [name, setName] = useState(''), [prof, setProf] = useState<any>(null), [showProfile, setShowProfile] = useState(false)
+  const [name, setName] = useState(''), [prof, setProf] = useState<any>(null), [showProfile, setShowProfile] = useState(false), [showHost, setShowHost] = useState(false)
   const [offerAmt, setOfferAmt] = useState(''), [myOffer, setMyOffer] = useState<any>(null)
   const idem = useRef('')
 
@@ -90,9 +90,8 @@ export default function Live({ slug }: { slug: string }) {
   const contrib = amount - (item?.current_price_fils || 0)
   return (
     <main className="wrap" style={{ maxWidth: 560 }}>
-      <div className="row section"><div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>{vendor.logo_url && <img src={vendor.logo_url} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />}<h2 style={{ margin: 0 }}>{vendor.name}</h2></div><div className="row" style={{ gap: 8 }}><a href="/explore" className="pill" style={{ textDecoration: 'none' }}>{t('explore')}</a>
+      <div className="row section"><button onClick={() => setShowHost(true)} aria-label={vendor.name} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, background: 'none', padding: 0, textAlign: 'start' }}><span style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{vendor.logo_url ? <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (vendor.name || '?').charAt(0)}</span><h2 style={{ margin: 0 }}>{vendor.name}</h2></button><div className="row" style={{ gap: 8 }}><a href="/explore" className="pill" style={{ textDecoration: 'none' }}>{t('explore')}</a>
         {user && <button onClick={() => setShowProfile(true)} style={{ width: 40, height: 40, borderRadius: 99, background: '#eadcc5', overflow: 'hidden', padding: 0, fontSize: 18 }} aria-label={t('my_profile')}>{prof?.avatar_url ? <img src={prof.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}</button>}</div></div>
-      {(vendor.bio || Object.values(vendor.socials || {}).some(Boolean)) && <div className="card section">{vendor.bio && <div>{vendor.bio}</div>}<SocialLinks socials={vendor.socials} /></div>}
       <div className="card section">
         {!item ? <div className="empty">{t('no_item')}</div> : (<>
           <div className="product">
@@ -157,6 +156,15 @@ export default function Live({ slug }: { slug: string }) {
             <h3>{fmt(contrib, lang)}</h3>
             <PayForm t={t} onDone={() => { setModal(''); setMsg(t('support_wait')); idem.current = '' }} /></Elements>)}
         </div></div>)}
+      {showHost && <div onClick={() => setShowHost(false)} style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="card" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: '0 0 0 3px #a77b3c55' }}>
+            {vendor.logo_url ? <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (vendor.name || '?').charAt(0)}</div>
+          <h3 style={{ margin: '0 0 6px' }}>{vendor.name}</h3>
+          {vendor.bio ? <p style={{ whiteSpace: 'pre-wrap' }}>{vendor.bio}</p> : <p className="muted">{t('no_bio')}</p>}
+          <div style={{ display: 'flex', justifyContent: 'center' }}><SocialLinks socials={vendor.socials} /></div>
+          <button className="btn light full" style={{ marginTop: 16 }} onClick={() => setShowHost(false)}>{t('close_btn')}</button>
+        </div></div>}
       {showProfile && <Profile onClose={() => { setShowProfile(false); load() }} />}
       {msg && <div className="toast">{msg}</div>}
     </main>
