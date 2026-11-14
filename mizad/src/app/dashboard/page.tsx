@@ -28,7 +28,7 @@ export default function Dash() {
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
@@ -60,7 +60,7 @@ export default function Dash() {
     return () => clearInterval(i)
   }, [v?.id, load])
   useEffect(() => {
-    if (tab !== 'sessions' || !v) return
+    if (tab !== 'sales' || salesView !== 'sessions' || !v) return
     let off = false
     const run = async () => {
       const [b, o] = await Promise.all([db.from('bids').select('item_id,bidder_id').eq('vendor_id', v.id).limit(10000), db.from('offers').select('item_id,bidder_id').eq('vendor_id', v.id).limit(10000)])
@@ -69,7 +69,7 @@ export default function Dash() {
       if (!off) setParts(Object.fromEntries(Object.entries(m).map(([key, x]) => [key, x.size])))
     }
     run(); const i = setInterval(run, 8000); return () => { off = true; clearInterval(i) }
-  }, [tab, v?.id])
+  }, [tab, salesView, v?.id])
   const pendingCount = bidders.filter(b => b.status === 'pending').length
   const offerCount = offers.filter(o => o.status === 'pending' && items.some(i => i.id === o.item_id && !i.revealed && (i.status === 'live' || i.status === 'paused'))).length
   useEffect(() => { const n = pendingCount + offerCount; document.title = n ? `(${n}) MIZAD` : 'Mizad | مِزاد' }, [pendingCount, offerCount])
@@ -167,29 +167,25 @@ export default function Dash() {
   return (
     <main className="wrap">
       <div className="row section" style={{ gap: 10, alignItems: 'center' }}>
-        <button onClick={() => setShowProf(true)} aria-label={t('host_profile')} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, textAlign: 'start', background: 'none', padding: 0 }}>
-          <span style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, boxShadow: '0 0 0 2px #a77b3c55' }}>
+        <button onClick={() => setMenuOpen(true)} aria-label={t('host_profile')} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, textAlign: 'start', background: 'none', padding: 0 }}>
+          <span style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flexShrink: 0, boxShadow: '0 0 0 2px #a77b3c66' }}>
             {v.logo_url ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (v.name || '?').charAt(0)}</span>
-          <h2 style={{ margin: 0, minWidth: 0 }}>{v.name}</h2></button>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Link href="/explore" className="tab" style={{ textDecoration: 'none', padding: '10px 14px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z" /></svg><span>{t('explore')}</span></Link>
-          <button className="tab" style={{ padding: '10px 14px', background: 'var(--gold)', color: '#fff' }} onClick={() => setStreaming(true)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /><path d="M8 21h8" /></svg><span>{t('stream_mode')}</span></button>
-        </div>
+          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}><span style={{ fontSize: 19, fontWeight: 700 }}>{v.name}</span><span className="muted" style={{ fontSize: 12 }}>{t('profile_menu_hint')} ›</span></span></button>
+        <Link href="/explore" aria-label={t('explore')} style={{ width: 44, height: 44, borderRadius: '50%', background: '#eae7e0', color: '#20211f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z" /></svg></Link>
       </div>
-      <div className="tabs">{['auction', 'sessions', 'sales', 'bidders', 'products', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TAB_ICONS[k]}</svg>
-        <span>{t('tab_' + k)}</span>
-        {(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ position: 'absolute', top: 5, insetInlineEnd: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 20, padding: '0 5px', borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 11, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
-      <div className="notice">{t('share_link')}: <b dir="ltr">{link}</b></div>
 
-      {tab === 'auction' && <><div className="card section">
-        {liveSession ? <div className="row"><div><span className="pill green">● {t('live_now')}</span> <b>{liveSession.title}</b><div className="muted">{t('session_since')} {new Date(liveSession.started_at || liveSession.created_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB')}</div></div>
-          <button className="btn red" onClick={() => { if (confirm(t('end_session') + '?')) sessionAct('end') }}>{t('end_session')}</button></div>
-          : <><p className="muted" style={{ marginTop: 0 }}>{t('session_none')}</p><input placeholder={t('session_title_ph')} value={sTitle} onChange={e => setSTitle(e.target.value)} />
-            <button className="btn gold full" onClick={() => sessionAct('start')}>{t('start_session')}</button></>}
-      </div><div className="grid">
+      {tab === 'auction' && <>{liveSession ? <div className="section" style={{ background: '#20211f', color: '#fff', borderRadius: 20, padding: '16px 18px' }}>
+        <div className="row"><div><span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 600 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#4ec27a' }} />{liveSession.title}</span>
+          <div style={{ fontSize: 12, color: '#c9c6bd', marginTop: 2 }}>{t('live_now')} · {t('session_since')} {new Date(liveSession.started_at || liveSession.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-AE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</div></div>
+          <button className="btn red" style={{ fontSize: 13 }} onClick={() => { if (confirm(t('end_session') + '?')) sessionAct('end') }}>{t('end_session')}</button></div>
+        <button className="btn gold full" style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }} onClick={() => setStreaming(true)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /><path d="M8 21h8" /></svg>{t('stream_mode')}</button></div>
+        : <div className="card section"><p className="muted" style={{ marginTop: 0 }}>{t('session_none')}</p><input placeholder={t('session_title_ph')} value={sTitle} onChange={e => setSTitle(e.target.value)} />
+            <button className="btn gold full" onClick={() => sessionAct('start')}>{t('start_session')}</button></div>}
+      <button className="btn full section" style={{ background: '#fdf6e8', border: '1px solid #ecd9b0', color: '#7a5a2b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => { try { navigator.clipboard.writeText(link); say(t('copied')) } catch { say(link) } }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>{t('copy_link')}</button>
+      <div className="grid">
         <div>
           <div className="card section">
             {!cur ? <div className="empty">{t('no_item')}</div> : (<>
@@ -298,7 +294,10 @@ export default function Dash() {
         })()}</div>
       </div>}
 
-      {tab === 'sales' && <div className="card"><h3>{t('tab_sales')}</h3>
+      {tab === 'sales' && <div className="section" style={{ display: 'flex', gap: 8 }}>
+        <button className={'btn ' + (salesView === 'all' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setSalesView('all')}>{t('sales_all')}</button>
+        <button className={'btn ' + (salesView === 'sessions' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setSalesView('sessions')}>{t('sales_sessions')}</button></div>}
+      {tab === 'sales' && salesView === 'all' && <div className="card"><h3>{t('tab_sales')}</h3>
         {(() => {
           const q = sq.trim().toLowerCase()
           const sold = items.filter(i => i.status === 'sold').sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0))
@@ -314,7 +313,7 @@ export default function Dash() {
             {sold.length === 0 ? <div className="empty">{t('no_history')}</div> : list.length === 0 ? <div className="empty">{t('no_results')}</div> : <div className="bidlist">{list.map(i => renderSale(i))}</div>}</>)
         })()}</div>}
 
-      {tab === 'sessions' && <div className="card"><h3>{t('sessions_title')}</h3>
+      {tab === 'sales' && salesView === 'sessions' && <div className="card"><h3>{t('sessions_title')}</h3>
         {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).length === 0 ? <div className="empty">{t('no_sessions')}</div> : <div className="bidlist">
           {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).map(x => {
             const its = items.filter(i => i.auction_id === x.id), soldI = its.filter(i => i.status === 'sold'), ret = its.filter(i => i.status === 'unsold')
@@ -331,6 +330,7 @@ export default function Dash() {
               {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}</div>)
           })}</div>}</div>}
 
+      {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
       {tab === 'billing' && <div className="grid">
         <div className="card"><div className="stats">
           <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang)}</b></div>
@@ -345,6 +345,19 @@ export default function Dash() {
       </div>}
       {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
+      <div style={{ height: 96 }} />
+      <nav className="bottomnav" aria-label="tabs">{['auction', 'products', 'bidders', 'sales'].map(k => <button key={k} className={'bn-item' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={tab === k ? 2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TAB_ICONS[k]}</svg>
+        <span>{t('tab_' + k)}</span>{tab === k && <i className="bn-dot" />}
+        {(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span className="bn-badge">{n}</span> })()}</button>)}</nav>
+      {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: '#20211f73', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#f5f3ef', width: '100%', maxWidth: 480, borderRadius: '22px 22px 0 0', padding: '20px 18px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="btn light full" style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-start', height: 52 }} onClick={() => { setMenuOpen(false); setShowProf(true) }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>{t('host_profile')}</button>
+          <button className="btn light full" style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-start', height: 52 }} onClick={() => { setMenuOpen(false); setTab('billing') }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TAB_ICONS.billing}</svg>{t('tab_billing')}</button>
+          <button className="btn full" style={{ height: 48, marginTop: 6 }} onClick={() => setMenuOpen(false)}>{t('close_btn')}</button>
+        </div></div>}
       {showProf && <HostProfile vendor={v} onClose={() => { setShowProf(false); load() }} />}
       {toast && <div className="toast">{toast}</div>}
     </main>
