@@ -29,7 +29,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
     const url = db.storage.from('avatars').getPublicUrl(path).data.publicUrl + '?v=' + Date.now()
     await db.from('profiles').update({ avatar_url: url }).eq('id', user.id); load()
   }
-  const saveName = async () => { const { error } = await db.from('profiles').update({ full_name: name.trim() }).eq('id', user.id); setMsg(error ? error.message : '✓'); load() }
+  const saveName = async () => { const { error } = await db.from('profiles').update({ full_name: name.trim() }).eq('id', user.id); setMsg(error ? (error.code === '23505' ? t('NAME_TAKEN') : error.message) : '✓'); load() }
   // Phone change: 1) code to the CURRENT number, 2) code to the NEW number.
   const startChange = async () => { setMsg(''); const { error } = await db.auth.signInWithOtp({ phone: cur, options: { shouldCreateUser: false } }); error ? setMsg(error.message) : setStep('cur') }
   const verifyCur = async () => { const { error } = await db.auth.verifyOtp({ phone: cur, token: code, type: 'sms' }); if (error) return setMsg(error.message); setCode(''); setMsg(''); setStep('new') }
@@ -38,7 +38,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
     const { error } = await db.auth.verifyOtp({ phone: newP, token: code, type: 'phone_change' }); if (error) return setMsg(error.message)
     setCode(''); setNp(''); setStep('idle'); setMsg(t('phone_changed')); load()
   }
-  const signOut = async () => { await db.auth.signOut(); onClose(); location.reload() }
+  const signOut = async () => { await db.auth.signOut({ scope: 'local' }); onClose(); location.reload() }
 
   if (!user) return null
   const ok = msg === '✓' || msg === t('phone_changed')
