@@ -25,6 +25,7 @@ export default function Home() {
             : user ? <Link href="/dashboard"><button className="btn full">{t('dashboard')}</button></Link>
             : <BidderAuth onDone={load} />}
         </div>)}
+      <Link href="/explore"><button className="btn gold full section">{t('explore')}</button></Link>
       <div className="card" style={{ textAlign: 'center' }}>
         <p className="muted">{t('home_vendor')}</p>
         <Link href="/login"><button className="btn light full">{t('host_login')}</button></Link>
