@@ -5,8 +5,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}
 .top{background:#20211f;color:#fff;padding:16px 5vw;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .brand{font-size:23px;font-weight:700;letter-spacing:.2px}.brand span{color:#d7b77f}.top small{color:#c7c5be}
 .wrap{max-width:1180px;margin:28px auto;padding:0 20px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
-.tab{padding:11px 18px;border-radius:12px;background:#eae7e0;color:#55574f;font-weight:600}
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:22px}
+.tab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 6px;border-radius:12px;background:#eae7e0;color:#55574f;font-weight:600;font-size:13px;line-height:1.2;text-align:center}
 .tab.active{background:#252621;color:#fff}
 .notice{background:#fff8e9;border:1px solid #efdfbd;color:#775b2e;padding:13px 16px;border-radius:13px;margin-bottom:20px;font-size:13px}
 .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
