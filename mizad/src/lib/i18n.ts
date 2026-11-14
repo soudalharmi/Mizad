@@ -37,6 +37,9 @@ const ar: Record<string, string> = {
   start_session: 'بدء جلسة جديدة', end_session: 'إنهاء الجلسة', session_since: 'منذ', session_title_ph: 'اسم الجلسة (اختياري)', participants: 'المشاركون', total_sales: 'إجمالي المبيعات', products_sold: 'المنتجات المباعة', returned: 'على المرجوع', live_now: 'مباشرة', ended: 'منتهية',
   NO_SESSION: 'ابدأ جلسة جديدة أولاً', SESSION_LIVE: 'لديك جلسة مباشرة بالفعل', PHONE_TAKEN: 'رقم الجوال مسجّل مسبقاً، سجّل الدخول بدلاً من ذلك', NAME_TAKEN: 'الاسم مستخدم مسبقاً، اختر اسماً آخر', BAD_PHONE: 'رقم الجوال غير صحيح',
   no_account: 'ليس لديك حساب؟', create_platform: 'أنشئ حساباً في المنصة', platform_hint: 'حساب واحد في مِزاد يكفي للمشاركة في مزادات جميع المضيفين. بعد التسجيل تطلب الموافقة من كل مضيف بضغطة واحدة.', for_bidders: 'للمزايدين', host_login: 'دخول أصحاب المزادات',
+  owner_section: 'بيانات صاحب المنتج', optional: 'اختياري', owner_name: 'اسم صاحب المنتج', owner_phone: 'رقم هاتف صاحب المنتج', asked_price: 'السعر المطلوب', sold_products: 'المنتجات المباعة',
+  mark_pending: 'قيد الانتظار', mark_winner_paid: 'الفائز دفع', mark_owner_paid: 'تم تحويل المبلغ للمالك', mark_awaiting_delivery: 'بانتظار التسليم', mark_completed: 'مكتمل',
+  crop_title: 'اضبط صورتك', crop_hint: 'اسحب لتحريك الصورة، وكبّرها بإصبعين أو بالشريط',
 }
 const en: Record<string, string> = {
   tagline: 'Live Misbaha auctions', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
@@ -77,5 +80,8 @@ const en: Record<string, string> = {
   start_session: 'Start new session', end_session: 'End session', session_since: 'since', session_title_ph: 'Session name (optional)', participants: 'Participants', total_sales: 'Total sales', products_sold: 'Products sold', returned: 'Returned (unsold)', live_now: 'Live', ended: 'Ended',
   NO_SESSION: 'Start a new session first', SESSION_LIVE: 'You already have a live session', PHONE_TAKEN: 'This phone number is already registered, sign in instead', NAME_TAKEN: 'This name is already taken, choose another', BAD_PHONE: 'Invalid phone number',
   no_account: 'No account?', create_platform: 'Create a MIZAD account', platform_hint: 'One MIZAD account lets you join every host\'s auctions. After signing up, request approval from each host with one tap.', for_bidders: 'For bidders', host_login: 'Host login',
+  owner_section: 'Product owner details', optional: 'optional', owner_name: 'Product owner name', owner_phone: 'Product owner phone', asked_price: 'Asked price', sold_products: 'Sold products',
+  mark_pending: 'Pending', mark_winner_paid: 'Winner paid', mark_owner_paid: 'Money sent to owner', mark_awaiting_delivery: 'Waiting for delivery', mark_completed: 'Completed',
+  crop_title: 'Adjust your photo', crop_hint: 'Drag to move, pinch or use the slider to zoom',
 }
 export const dict = { ar, en }
