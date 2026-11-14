@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 :root{--bg:#f5f3ef;--paper:#fff;--ink:#20211f;--muted:#777970;--line:#e8e5de;--gold:#a77b3c;--gold2:#eadcc5;--green:#26734d;--red:#b64c42;--shadow:0 12px 36px #28251c0d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',Arial,sans-serif}
-button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;color:inherit}
 .top{background:#20211f;color:#fff;padding:16px 5vw;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .brand{font-size:23px;font-weight:700;letter-spacing:.2px}.brand span{color:#d7b77f}.top small{color:#c7c5be}
 .wrap{max-width:1180px;margin:28px auto;padding:0 20px}
