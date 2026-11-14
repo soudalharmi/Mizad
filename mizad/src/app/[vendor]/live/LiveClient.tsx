@@ -68,6 +68,8 @@ export default function Live({ slug }: { slug: string }) {
   const verify = async () => { const { error } = await db.auth.verifyOtp({ phone, token: code, type: 'sms' }); error ? setMsg(error.message) : load() }
   const join = async () => { const { error } = await db.from('bidders').insert({ vendor_id: vendor.id, user_id: user.id, name }); error ? setMsg(error.message) : load() }
   useEffect(() => { if (msg) { const x = setTimeout(() => setMsg(''), 4000); return () => clearTimeout(x) } }, [msg])
+  // While waiting for host approval, check every 4s so the page unlocks without a refresh.
+  useEffect(() => { if (me?.status !== 'pending') return; const i = setInterval(load, 4000); return () => clearInterval(i) }, [me?.status, load])
 
   if (!vendor) return <main className="wrap"><div className="empty">…</div></main>
   const contrib = amount - (item?.current_price_fils || 0)
@@ -77,7 +79,8 @@ export default function Live({ slug }: { slug: string }) {
       <div className="card section">
         {!item ? <div className="empty">{t('no_item')}</div> : (<>
           <div className="product">
-            <div className="product-img">{item.image_url ? <img src={item.image_url} alt={item.name} /> : '📿'}</div>
+            <div className="product-img">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.ref_code
+              ? <div style={{ textAlign: 'center' }}><div style={{ fontSize: 11, color: '#55574f' }}>{t('ref_code')}</div><b dir="ltr" style={{ fontSize: 20, letterSpacing: 2 }}>{item.ref_code}</b></div> : '📿'}</div>
             <div><h3>{item.name}</h3><div className="muted">{item.description}</div>
               <div className="muted" style={{ marginTop: 8 }}>{t('start_price')}: {fmt(item.start_price_fils, lang)}</div></div>
           </div>
