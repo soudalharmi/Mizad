@@ -5,6 +5,8 @@ import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
 import { aedToFils, fmt } from '@/lib/money'
 import StreamMode from '@/components/StreamMode'
+import HostProfile from '@/components/HostProfile'
+import Link from 'next/link'
 
 const genCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint8Array(5)); return 'MZ-' + Array.from(r, x => A[x % A.length]).join('') }
 
@@ -13,10 +15,10 @@ export default function Dash() {
   const [v, setV] = useState<any>(null), [ready, setReady] = useState(false), [tab, setTab] = useState('auction'), [toast, setToast] = useState('')
   const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
   const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
-  const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
+  const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
@@ -26,7 +28,7 @@ export default function Dash() {
     const q = (tb: string) => db.from(tb).select('*').eq('vendor_id', vv.id)
     const [a, b, c, d, e, f, g, h, k, l] = await Promise.all([
       q('auction_items').order('position'), q('bidders').order('created_at', { ascending: false }),
-      q('bids').order('created_at', { ascending: false }).limit(30), q('support_contributions').order('created_at', { ascending: false }).limit(30),
+      q('bids').order('created_at', { ascending: false }).limit(1000), q('support_contributions').order('created_at', { ascending: false }).limit(30),
       db.from('item_service_fees').select('*,auction_items(name)').eq('vendor_id', vv.id), q('invoices').order('created_at', { ascending: false }),
       q('item_secrets'), q('offers').order('created_at', { ascending: false }).limit(80), q('auctions').order('created_at', { ascending: false }), q('item_private')])
     setItems(a.data || []); setBidders(b.data || []); setBids(c.data || []); setSup(d.data || []); setFees(e.data || []); setInv(f.data || [])
@@ -83,11 +85,11 @@ export default function Dash() {
       const { error: e2 } = await db.from('item_secrets').insert({ item_id: ins!.id, vendor_id: v.id, start_price_fils: aedToFils(form.start), increment_fils: aedToFils(form.inc) })
       if (e2) return say(e2.message)
     }
-    if (form.oname.trim() || form.ophone.trim() || form.asked) {
-      const { error: e3 } = await db.from('item_private').insert({ item_id: ins!.id, vendor_id: v.id, owner_name: form.oname.trim() || null, owner_phone: form.ophone.trim() || null, asked_price_fils: form.asked ? aedToFils(form.asked) : null })
+    if (form.oname.trim() || form.ophone.trim() || form.asked || form.cat.trim()) {
+      const { error: e3 } = await db.from('item_private').insert({ item_id: ins!.id, vendor_id: v.id, owner_name: form.oname.trim() || null, owner_phone: form.ophone.trim() || null, asked_price_fils: form.asked ? aedToFils(form.asked) : null, category: form.cat.trim() || null })
       if (e3) say(e3.message)
     }
-    setForm({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '' }); setFile(null); setCode(genCode()); load()
+    setForm({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }); setFile(null); setCode(genCode()); load()
   }
   const MARKS = ['pending', 'winner_paid', 'owner_paid', 'awaiting_delivery', 'completed']
   const toggleMark = async (itemId: string, m: string) => {
@@ -98,6 +100,34 @@ export default function Dash() {
     setPriv(p => ({ ...p, [itemId]: { ...(p[itemId] || {}), item_id: itemId, marks: next } }))
     const { error } = priv[itemId] ? await db.from('item_private').update({ marks: next }).eq('item_id', itemId) : await db.from('item_private').insert({ item_id: itemId, vendor_id: v.id, marks: next })
     if (error) { say(error.message); load() }
+  }
+  const savePriv = async (itemId: string, patch: any) => {
+    const { error } = priv[itemId] ? await db.from('item_private').update(patch).eq('item_id', itemId) : await db.from('item_private').insert({ item_id: itemId, vendor_id: v.id, ...patch })
+    error ? say(error.message) : load()
+  }
+  const digits = (x?: string) => String(x || '').replace(/\D/g, '')
+  const phoneHit = (phone: string | undefined, q: string) => { const d = digits(q); return d.length > 0 && digits(phone).includes(d) }
+  const renderSale = (i: any) => {
+    const w = bidders.find(b => b.id === i.leader_bidder_id), p = priv[i.id], marks: string[] = p?.marks || ['pending'], ed = editP?.id === i.id
+    return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
+      <div className="row"><div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '📿'}</b>}</div>
+        <div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {p?.category && <span className="pill">{p.category}</span>}</div></div>
+        <b>{fmt(i.current_price_fils, lang)}</b></div>
+      <div className="kv"><span>{t('buyer')}</span><b>{i.leader_name} <span dir="ltr" className="muted">{ph(w?.phone)}</span></b></div>
+      <div className="kv"><span>{t('seller')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
+      {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
+      <div className="kv"><span>{t('date')}</span><b>{i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</b></div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>{MARKS.map(m => <button key={m} className={'btn ' + (marks.includes(m) ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => toggleMark(i.id, m)}>{marks.includes(m) ? '✓ ' : ''}{t('mark_' + m)}</button>)}</div>
+      <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
+      {ed && <div className="notice" style={{ marginTop: 8 }}>
+        <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
+        <label>{t('owner_phone')}</label><input dir="ltr" inputMode="tel" value={editP.ophone} onChange={e => setEditP({ ...editP, ophone: e.target.value })} />
+        <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
+        <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
+        <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
+    </div>)
   }
   const ph = (p?: string) => p ? (String(p).startsWith('+') ? p : '+' + p) : ''
   const statement = (i: any) => {
@@ -126,8 +156,8 @@ export default function Dash() {
 
   return (
     <main className="wrap">
-      <div className="row section" style={{ justifyContent: 'flex-end', gap: 8 }}><button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button><button className="btn light" onClick={logout}>{t('logout')}</button></div>
-      <div className="tabs">{['auction', 'sessions', 'bidders', 'products', 'history', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{t('tab_' + k)}{(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', marginInlineStart: 8, borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 12, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
+      <div className="row section" style={{ justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}><Link href="/explore"><button className="btn light">{t('explore')}</button></Link><button className="btn light" onClick={() => setShowProf(true)}>{t('my_host_profile')}</button><button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button><button className="btn light" onClick={logout}>{t('logout')}</button></div>
+      <div className="tabs">{['auction', 'sessions', 'sales', 'bidders', 'products', 'history', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{t('tab_' + k)}{(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', marginInlineStart: 8, borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 12, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
       <div className="notice">{t('share_link')}: <b dir="ltr">{link}</b></div>
 
       {tab === 'auction' && <><div className="card section">
@@ -162,9 +192,16 @@ export default function Dash() {
               <div className="person" key={o.id}><div><b>{o.bidder_name}</b><br /><small className="muted">{new Date(o.created_at).toLocaleTimeString()}</small></div>
                 <div className="person-actions"><b style={{ alignSelf: 'center' }}>{fmt(o.amount_fils, lang)}</b><button className="btn green" onClick={() => decide(o.id, true)}>{t('accept')}</button><button className="btn red" onClick={() => decide(o.id, false)}>{t('reject')}</button></div></div>))}</div>}
           </div>}
-          <div className="card"><h3>{t('bids')}</h3>
-            {bids.length === 0 ? <div className="empty">{t('no_bids')}</div> : <div className="bidlist">{bids.map(b => (
-              <div className="bidrow" key={b.id}><div><strong>{b.bidder_name}</strong><br /><small>{new Date(b.created_at).toLocaleTimeString()}</small></div><span>{fmt(b.amount_fils, lang)}</span></div>))}</div>}
+          <div className="card"><div className="row"><h3 style={{ margin: 0 }}>{t('bids')}</h3>{bids.length > 0 && (() => { const ids = Array.from(new Set(bids.map(x => x.item_id))); const allOpen = ids.every(id => openBids[id] ?? id === cur?.id); return <button className="btn light" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setOpenBids(Object.fromEntries(ids.map(id => [id, !allOpen])))}>{allOpen ? t('collapse_all') : t('expand_all')}</button> })()}</div>
+            {bids.length === 0 ? <div className="empty">{t('no_bids')}</div> : <div className="bidlist" style={{ marginTop: 10 }}>{Array.from(new Set(bids.map(x => x.item_id))).map(id => {
+              const it = items.find(x => x.id === id), list = bids.filter(x => x.item_id === id), open = openBids[id] ?? id === cur?.id
+              return (<div key={id}>
+                <button className="person" style={{ width: '100%', cursor: 'pointer', textAlign: 'start' }} onClick={() => setOpenBids(o => ({ ...o, [id]: !open }))}>
+                  <span><b>{it?.name || '—'}</b> {it?.ref_code && <span className="pill gold" dir="ltr">{it.ref_code}</span>}<br /><small className="muted">{list.length} {t('bids_count')} · {fmt(Math.max(...list.map(x => x.amount_fils)), lang)}</small></span><span>{open ? '▲' : '▼'}</span></button>
+                {open && <div className="bidlist" style={{ marginTop: 6, paddingInlineStart: 8 }}>{list.map(b => (
+                  <div className="bidrow" key={b.id}><div><strong>{b.bidder_name}</strong><br /><small>{new Date(b.created_at).toLocaleTimeString()}</small></div><span>{fmt(b.amount_fils, lang)}</span></div>))}</div>}
+              </div>)
+            })}</div>}
           </div>
         </div>
         <div className="card"><h3>{t('ledger')}</h3>
@@ -174,13 +211,20 @@ export default function Dash() {
         </div>
       </div></>}
 
-      {tab === 'bidders' && <><div className="card section"><div className="row"><div><b>{t('auto_approve')}</b><div className="muted">{t('auto_approve_hint')}</div></div><button className={'btn ' + (v.auto_approve ? 'green' : 'light')} onClick={toggleAuto}>{v.auto_approve ? t('on') : t('off')}</button></div></div><div className="grid">
+      {tab === 'bidders' && <><div className="card section"><div className="row"><div><b>{t('auto_approve')}</b><div className="muted">{t('auto_approve_hint')}</div></div><button className={'btn ' + (v.auto_approve ? 'green' : 'light')} onClick={toggleAuto}>{v.auto_approve ? t('on') : t('off')}</button></div></div>
+        {(() => {
+          const hit = (b: any) => { const q = bq.trim().toLowerCase(); return !q || String(b.name || '').toLowerCase().includes(q) || phoneHit(b.phone, q) }
+          const ap = approved.filter(hit), su = bidders.filter(b => b.status === 'suspended').filter(hit)
+          return (<><input className="section" placeholder={t('search_bidders')} value={bq} onChange={e => setBq(e.target.value)} /><div className="grid">
         <div className="card"><div className="row"><h3>{t('pending')} ({pending.length})</h3>{pending.length > 0 && <button className="btn green" onClick={approveAll}>{t('approve_all')}</button>}</div><div className="bidlist">{pending.map(b => (
           <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{b.phone}</small></div>
             <div className="person-actions"><button className="btn green" onClick={() => setStatus(b.id, 'approved')}>{t('approve')}</button><button className="btn red" onClick={() => setStatus(b.id, 'rejected')}>{t('reject')}</button></div></div>))}</div></div>
-        <div className="card"><h3>{t('approved')} ({approved.length})</h3><div className="bidlist">{approved.map(b => (
-          <div className="person" key={b.id}><b>{b.name}</b><button className="btn red" onClick={() => setStatus(b.id, 'suspended')}>{t('suspend')}</button></div>))}</div></div>
-      </div></>}
+        <div className="card"><h3>{t('approved')} ({ap.length})</h3><div className="bidlist">{ap.length === 0 && bq && <div className="empty">{t('no_results')}</div>}{ap.map(b => (
+          <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{ph(b.phone)}</small></div><button className="btn red" onClick={() => setStatus(b.id, 'suspended')}>{t('suspend')}</button></div>))}</div></div>
+        <div className="card"><h3>{t('suspended_hdr')} ({su.length})</h3><div className="bidlist">{su.length === 0 && bq && <div className="empty">{t('no_results')}</div>}{su.map(b => (
+          <div className="person" key={b.id}><div><b>{b.name}</b><br /><small className="muted" dir="ltr">{ph(b.phone)}</small></div><button className="btn green" onClick={() => setStatus(b.id, 'approved')}>{t('reactivate')}</button></div>))}</div></div>
+      </div></>)
+        })()}</>}
 
       {tab === 'products' && <div className="grid">
         <div className="card"><h3>{t('add_item')}</h3>
@@ -193,7 +237,8 @@ export default function Dash() {
           <div className="notice" style={{ marginTop: 14 }}><b>{t('owner_section')}</b> <small className="muted">({t('host_only')} · {t('optional')})</small>
             <label>{t('owner_name')}</label><input value={form.oname} onChange={e => setForm({ ...form, oname: e.target.value })} />
             <label>{t('owner_phone')}</label><input inputMode="tel" dir="ltr" value={form.ophone} onChange={e => setForm({ ...form, ophone: e.target.value })} />
-            <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} /></div>
+            <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} />
+            <label>{t('category')}</label><input list="cats" value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} /><datalist id="cats">{Array.from(new Set(Object.values(priv).map((x: any) => x.category).filter(Boolean))).map((c: any) => <option key={c} value={c} />)}</datalist></div>
           <label>{t('image')}</label>
           <div className="row" style={{ gap: 8 }}><button className={'btn ' + (mode === 'photo' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('photo')}>{t('photo_mode')}</button><button className={'btn ' + (mode === 'code' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('code')}>{t('code_mode')}</button></div>
           {mode === 'photo' ? <input type="file" accept="image/*" style={{ marginTop: 10 }} onChange={e => setFile(e.target.files?.[0] || null)} />
@@ -204,6 +249,22 @@ export default function Dash() {
             <div className="person-actions"><span className={'pill ' + stPill(i.status)}>{i.status}</span>
               {(i.status === 'queued' || i.status === 'paused') && <button className="btn green" disabled={!liveSession} onClick={() => act('open', i.id)}>{t('open')}</button>}</div></div>))}</div></div>
       </div>}
+
+      {tab === 'sales' && <div className="card"><h3>{t('tab_sales')}</h3>
+        {(() => {
+          const q = sq.trim().toLowerCase()
+          const sold = items.filter(i => i.status === 'sold').sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0))
+          const list = sold.filter(i => {
+            const p = priv[i.id], w = bidders.find(b => b.id === i.leader_bidder_id), marks: string[] = p?.marks || ['pending']
+            if (sf !== 'all' && !marks.includes(sf)) return false
+            if (!q) return true
+            return [i.name, i.ref_code, p?.owner_name, p?.category, i.leader_name, w?.name].some(x => String(x || '').toLowerCase().includes(q)) || phoneHit(p?.owner_phone, q) || phoneHit(w?.phone, q)
+          })
+          return (<>
+            <input placeholder={t('search_products')} value={sq} onChange={e => setSq(e.target.value)} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>{['all', ...MARKS].map(m => <button key={m} className={'btn ' + (sf === m ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setSf(m)}>{m === 'all' ? t('all') : t('mark_' + m)}</button>)}</div>
+            {sold.length === 0 ? <div className="empty">{t('no_history')}</div> : list.length === 0 ? <div className="empty">{t('no_results')}</div> : <div className="bidlist">{list.map(i => renderSale(i))}</div>}</>)
+        })()}</div>}
 
       {tab === 'sessions' && <div className="card"><h3>{t('sessions_title')}</h3>
         {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).length === 0 ? <div className="empty">{t('no_sessions')}</div> : <div className="bidlist">
@@ -219,16 +280,7 @@ export default function Dash() {
                 <div className="stat"><span className="muted">{t('products_sold')}</span><b>{soldI.length}</b></div>
                 <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div>
               {soldI.length > 0 && <button className="btn light full" style={{ marginTop: 12 }} onClick={() => setOpenSess(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('sold_products')} ({soldI.length}) {openSess[x.id] ? '▲' : '▼'}</button>}
-              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => {
-                const w = bidders.find(b => b.id === i.leader_bidder_id), p = priv[i.id], marks: string[] = p?.marks || ['pending']
-                return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
-                  <div className="row"><div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>}</div><b>{fmt(i.current_price_fils, lang)}</b></div>
-                  <div className="kv"><span>{t('winner')}</span><b>{i.leader_name} <span dir="ltr" className="muted">{ph(w?.phone)}</span></b></div>
-                  <div className="kv"><span>{t('owner_name')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
-                  {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>{MARKS.map(m => <button key={m} className={'btn ' + (marks.includes(m) ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => toggleMark(i.id, m)}>{marks.includes(m) ? '✓ ' : ''}{t('mark_' + m)}</button>)}</div>
-                </div>)
-              })}</div>}</div>)
+              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}</div>)
           })}</div>}</div>}
 
       {tab === 'history' && <div className="card"><h3>{t('sold_items')}</h3>
@@ -258,6 +310,7 @@ export default function Dash() {
               {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
       </div>}
       {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
+      {showProf && <HostProfile vendor={v} onClose={() => { setShowProf(false); load() }} />}
       {toast && <div className="toast">{toast}</div>}
     </main>
   )
