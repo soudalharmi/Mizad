@@ -166,15 +166,16 @@ export default function Dash() {
 
   return (
     <main className="wrap">
-      <div className="row section" style={{ gap: 8 }}>
-        <h2 style={{ margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <Link href="/explore"><button className="btn light">{t('explore')}</button></Link>
-          <button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button>
-          <button className="btn light" onClick={() => setShowProf(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 6px' }}>
-            <span style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-              {v.logo_url ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (v.name || '?').charAt(0)}</span>
-            {t('my_host_profile')}</button>
+      <div className="row section" style={{ gap: 10, alignItems: 'center' }}>
+        <button onClick={() => setShowProf(true)} aria-label={t('host_profile')} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, textAlign: 'start', background: 'none', padding: 0 }}>
+          <span style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, boxShadow: '0 0 0 2px #a77b3c55' }}>
+            {v.logo_url ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (v.name || '?').charAt(0)}</span>
+          <h2 style={{ margin: 0, minWidth: 0 }}>{v.name}</h2></button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <Link href="/explore" className="tab" style={{ textDecoration: 'none', padding: '10px 14px' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z" /></svg><span>{t('explore')}</span></Link>
+          <button className="tab" style={{ padding: '10px 14px', background: 'var(--gold)', color: '#fff' }} onClick={() => setStreaming(true)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /><path d="M8 21h8" /></svg><span>{t('stream_mode')}</span></button>
         </div>
       </div>
       <div className="tabs">{['auction', 'sessions', 'sales', 'bidders', 'products', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
