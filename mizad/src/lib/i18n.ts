@@ -23,6 +23,14 @@ const ar: Record<string, string> = {
   settings: 'الإعدادات', activation_fee: 'رسوم التفعيل (فلس)', item_fee: 'رسوم المنتج (فلس)', billing_mode: 'نظام الفوترة', threshold: 'حد الفوترة (فلس)', reactivate: 'إعادة تفعيل', payments: 'المدفوعات',
   auto_approve: 'القبول التلقائي للطلبات', auto_approve_hint: 'عند التفعيل يُقبل المزايدون الجدد فوراً بعد التحقق من جوالهم', on: 'مفعّل', off: 'متوقف', approve_all: 'قبول الكل',
   photo_mode: 'رفع صورة', code_mode: 'توليد رمز', ref_code: 'رمز المنتج', regenerate: 'رمز جديد', code_hint: 'اكتب هذا الرمز على المنتج الحقيقي ليتعرف عليه المزايدون',
+  signin: 'تسجيل الدخول', create_account: 'إنشاء حساب (مرة واحدة)', BAD_LOGIN: 'رقم الجوال أو كلمة المرور غير صحيحة', PW_SHORT: 'كلمة المرور 8 أحرف على الأقل',
+  my_profile: 'ملفي الشخصي', change_photo: 'تغيير الصورة', change_phone: 'تغيير الرقم', new_phone: 'الرقم الجديد', cur_code_sent: 'أرسلنا رمزاً إلى رقمك الحالي، أدخله للمتابعة',
+  new_code_sent: 'أرسلنا رمزاً إلى الرقم الجديد، أدخله لتأكيده', phone_changed: 'تم تغيير الرقم', purchases: 'مشترياتي', no_purchases: 'لا توجد مشتريات بعد', request_join_one: 'طلب الانضمام لهذا المزاد',
+  type_standard: 'مزاد عادي', type_custom: 'مزاد مخصص', custom_hint: 'السعر والزيادة تظهر لك فقط. المزايد يكتب سعره وأنت تقبل أو ترفض.', host_only: 'تظهر لك فقط',
+  offers: 'العروض المقدمة', accept: 'قبول', no_offers: 'لا توجد عروض بانتظارك', offer_floor: 'يجب أن يكون العرض أعلى من العرض المرفوض', 
+  your_price: 'اكتب سعرك (درهم)', send_offer: 'إرسال العرض', offer_sent: 'تم إرسال عرضك، بانتظار رد صاحب المزاد', offer_pending: 'عرضك بانتظار الرد', offer_rejected: 'تم رفض عرضك، قدّم عرضاً أعلى',
+  custom_badge: 'مزاد مخصص', custom_wait: 'قدّم عرضك وسيرد عليه صاحب المزاد. عند القبول تظهر قيمة الزيادة للجميع.', tab_history: 'السجل', sold_items: 'المنتجات المباعة', no_history: 'لا توجد منتجات مباعة بعد', date: 'التاريخ', sold: 'مباع', unsold: 'لم يُبع',
+  OFFER_ONLY: 'هذا مزاد مخصص: قدّم عرضاً بدلاً من المزايدة', BELOW_REJECTED: 'يجب أن يكون عرضك أعلى من العرض المرفوض', host_start: 'سعر البداية', host_inc: 'الزيادة',
 }
 const en: Record<string, string> = {
   tagline: 'Live Misbaha auctions', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
@@ -49,5 +57,13 @@ const en: Record<string, string> = {
   settings: 'Settings', activation_fee: 'Activation fee (fils)', item_fee: 'Item fee (fils)', billing_mode: 'Billing mode', threshold: 'Billing threshold (fils)', reactivate: 'Reactivate', payments: 'Payments',
   auto_approve: 'Auto-approve requests', auto_approve_hint: 'When on, new bidders are approved instantly once their phone is verified', on: 'ON', off: 'OFF', approve_all: 'Approve all',
   photo_mode: 'Upload photo', code_mode: 'Generate code', ref_code: 'Product code', regenerate: 'New code', code_hint: 'Write this code on the real product so bidders can identify it',
+  signin: 'Sign in', create_account: 'Create account (one time)', BAD_LOGIN: 'Wrong phone number or password', PW_SHORT: 'Password must be at least 8 characters',
+  my_profile: 'My profile', change_photo: 'Change photo', change_phone: 'Change number', new_phone: 'New number', cur_code_sent: 'We sent a code to your current number. Enter it to continue',
+  new_code_sent: 'We sent a code to the new number. Enter it to confirm', phone_changed: 'Number changed', purchases: 'My purchases', no_purchases: 'No purchases yet', request_join_one: 'Request to join this auction',
+  type_standard: 'Standard auction', type_custom: 'Custom auction', custom_hint: 'Start price and increment are visible to you only. Bidders type their price and you accept or reject it.', host_only: 'Visible to you only',
+  offers: 'Offers', accept: 'Accept', no_offers: 'No offers waiting', offer_floor: 'Offer must be higher than the rejected offer', 
+  your_price: 'Enter your price (AED)', send_offer: 'Send offer', offer_sent: 'Offer sent, waiting for the host', offer_pending: 'Your offer is waiting for a reply', offer_rejected: 'Your offer was rejected, offer a higher price',
+  custom_badge: 'Custom auction', custom_wait: 'Send your offer and the host will reply. When accepted, the increment becomes visible to everyone.', tab_history: 'History', sold_items: 'Sold items', no_history: 'No sold items yet', date: 'Date', sold: 'Sold', unsold: 'Unsold',
+  OFFER_ONLY: 'This is a custom auction: send an offer instead of bidding', BELOW_REJECTED: 'Your offer must be higher than the rejected offer', host_start: 'Start price', host_inc: 'Increment',
 }
 export const dict = { ar, en }
