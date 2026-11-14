@@ -21,6 +21,8 @@ const ar: Record<string, string> = {
   create_page: 'إنشاء صفحة المزاد', slug: 'رابط الصفحة (إنجليزي)', store_name: 'اسم المزاد',
   vendors: 'أصحاب المزادات', active_vendors: 'النشطون', bidders: 'المزايدون', items: 'المنتجات', activation_rev: 'إيرادات التفعيل', fee_rev: 'إيرادات الرسوم',
   settings: 'الإعدادات', activation_fee: 'رسوم التفعيل (فلس)', item_fee: 'رسوم المنتج (فلس)', billing_mode: 'نظام الفوترة', threshold: 'حد الفوترة (فلس)', reactivate: 'إعادة تفعيل', payments: 'المدفوعات',
+  auto_approve: 'القبول التلقائي للطلبات', auto_approve_hint: 'عند التفعيل يُقبل المزايدون الجدد فوراً بعد التحقق من جوالهم', on: 'مفعّل', off: 'متوقف', approve_all: 'قبول الكل',
+  photo_mode: 'رفع صورة', code_mode: 'توليد رمز', ref_code: 'رمز المنتج', regenerate: 'رمز جديد', code_hint: 'اكتب هذا الرمز على المنتج الحقيقي ليتعرف عليه المزايدون',
 }
 const en: Record<string, string> = {
   tagline: 'Live Misbaha auctions', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
@@ -45,5 +47,7 @@ const en: Record<string, string> = {
   create_page: 'Create your auction page', slug: 'Page URL (latin letters)', store_name: 'Auction name',
   vendors: 'Hosts', active_vendors: 'Active', bidders: 'Bidders', items: 'Items', activation_rev: 'Activation revenue', fee_rev: 'Service fee revenue',
   settings: 'Settings', activation_fee: 'Activation fee (fils)', item_fee: 'Item fee (fils)', billing_mode: 'Billing mode', threshold: 'Billing threshold (fils)', reactivate: 'Reactivate', payments: 'Payments',
+  auto_approve: 'Auto-approve requests', auto_approve_hint: 'When on, new bidders are approved instantly once their phone is verified', on: 'ON', off: 'OFF', approve_all: 'Approve all',
+  photo_mode: 'Upload photo', code_mode: 'Generate code', ref_code: 'Product code', regenerate: 'New code', code_hint: 'Write this code on the real product so bidders can identify it',
 }
 export const dict = { ar, en }
