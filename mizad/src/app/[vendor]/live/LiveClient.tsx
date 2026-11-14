@@ -122,7 +122,7 @@ export default function Live({ slug }: { slug: string }) {
         </>)}
       </div>
 
-      {!user && <div className="card section"><BidderAuth onDone={load} /></div>}
+      {!user && <div className="card section"><BidderAuth onDone={load} allowSignup={false} next={`/${slug}/live`} /></div>}
       {user && !me && <div className="card section">
         {!prof?.full_name && <><label>{t('name')}</label><input value={name} onChange={e => setName(e.target.value)} /></>}
         <button className="btn gold full" disabled={!(prof?.full_name || name).trim()} onClick={join}>{t('request_join_one')}</button></div>}
