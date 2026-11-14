@@ -13,10 +13,10 @@ export default function Dash() {
   const [v, setV] = useState<any>(null), [ready, setReady] = useState(false), [tab, setTab] = useState('auction'), [toast, setToast] = useState('')
   const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
   const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
-  const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
+  const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [sTitle, setSTitle] = useState('')
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
@@ -24,13 +24,15 @@ export default function Dash() {
     const { data: { user } } = await db.auth.getUser(); if (!user) return router.push('/login')
     const { data: vv } = await db.from('vendors').select('*').eq('owner_id', user.id).maybeSingle(); setV(vv); setReady(true); if (!vv) return
     const q = (tb: string) => db.from(tb).select('*').eq('vendor_id', vv.id)
-    const [a, b, c, d, e, f, g, h, k] = await Promise.all([
+    const [a, b, c, d, e, f, g, h, k, l] = await Promise.all([
       q('auction_items').order('position'), q('bidders').order('created_at', { ascending: false }),
       q('bids').order('created_at', { ascending: false }).limit(30), q('support_contributions').order('created_at', { ascending: false }).limit(30),
       db.from('item_service_fees').select('*,auction_items(name)').eq('vendor_id', vv.id), q('invoices').order('created_at', { ascending: false }),
-      q('item_secrets'), q('offers').order('created_at', { ascending: false }).limit(80), q('auctions').order('created_at', { ascending: false })])
+      q('item_secrets'), q('offers').order('created_at', { ascending: false }).limit(80), q('auctions').order('created_at', { ascending: false }), q('item_private')])
     setItems(a.data || []); setBidders(b.data || []); setBids(c.data || []); setSup(d.data || []); setFees(e.data || []); setInv(f.data || [])
-    setSecrets(Object.fromEntries((g.data || []).map((x: any) => [x.item_id, x]))); setOffers(h.data || []); setSessions(k.data || []); itemsRef.current = a.data || []
+    setSecrets(Object.fromEntries((g.data || []).map((x: any) => [x.item_id, x]))); setOffers(h.data || []); setSessions(k.data || []); setPriv(Object.fromEntries((l.data || []).map((x: any) => [x.item_id, x]))); itemsRef.current = a.data || []
+    const uids = (b.data || []).map((x: any) => x.user_id).filter(Boolean)
+    if (uids.length) { const { data: pr } = await db.from('profiles').select('id,avatar_url').in('id', uids); setAvatars(Object.fromEntries((pr || []).filter((x: any) => x.avatar_url).map((x: any) => [x.id, x.avatar_url]))) }
   }, [])
   useEffect(() => { load() }, [load])
   useEffect(() => {
@@ -81,8 +83,23 @@ export default function Dash() {
       const { error: e2 } = await db.from('item_secrets').insert({ item_id: ins!.id, vendor_id: v.id, start_price_fils: aedToFils(form.start), increment_fils: aedToFils(form.inc) })
       if (e2) return say(e2.message)
     }
-    setForm({ name: '', description: '', start: '', inc: '' }); setFile(null); setCode(genCode()); load()
+    if (form.oname.trim() || form.ophone.trim() || form.asked) {
+      const { error: e3 } = await db.from('item_private').insert({ item_id: ins!.id, vendor_id: v.id, owner_name: form.oname.trim() || null, owner_phone: form.ophone.trim() || null, asked_price_fils: form.asked ? aedToFils(form.asked) : null })
+      if (e3) say(e3.message)
+    }
+    setForm({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '' }); setFile(null); setCode(genCode()); load()
   }
+  const MARKS = ['pending', 'winner_paid', 'owner_paid', 'awaiting_delivery', 'completed']
+  const toggleMark = async (itemId: string, m: string) => {
+    const cur: string[] = priv[itemId]?.marks || ['pending']
+    let next = cur.includes(m) ? cur.filter(x => x !== m) : [...cur.filter(x => !(m === 'pending' || x === 'pending')), m]
+    if (m === 'pending' && !cur.includes('pending')) next = ['pending']
+    if (next.length === 0) next = ['pending']
+    setPriv(p => ({ ...p, [itemId]: { ...(p[itemId] || {}), item_id: itemId, marks: next } }))
+    const { error } = priv[itemId] ? await db.from('item_private').update({ marks: next }).eq('item_id', itemId) : await db.from('item_private').insert({ item_id: itemId, vendor_id: v.id, marks: next })
+    if (error) { say(error.message); load() }
+  }
+  const ph = (p?: string) => p ? (String(p).startsWith('+') ? p : '+' + p) : ''
   const statement = (i: any) => {
     const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || '').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
     const blob = new Blob([`item,fee_AED\n${rows.join('\n')}\ntotal,${(i.total_fils / 100).toFixed(2)}`], { type: 'text/csv' })
@@ -109,7 +126,7 @@ export default function Dash() {
 
   return (
     <main className="wrap">
-      <div className="row section" style={{ justifyContent: 'flex-end', gap: 8 }}><button className="btn gold" onClick={() => setStreaming(true)}>🎥 {t('stream_mode')}</button><button className="btn light" onClick={logout}>{t('logout')}</button></div>
+      <div className="row section" style={{ justifyContent: 'flex-end', gap: 8 }}><button className="btn gold" onClick={() => setStreaming(true)}>{t('stream_mode')}</button><button className="btn light" onClick={logout}>{t('logout')}</button></div>
       <div className="tabs">{['auction', 'sessions', 'bidders', 'products', 'history', 'billing'].map(k => <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{t('tab_' + k)}{(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', marginInlineStart: 8, borderRadius: 99, background: '#d93025', color: '#fff', fontSize: 12, fontWeight: 700 }}>{n}</span> })()}</button>)}</div>
       <div className="notice">{t('share_link')}: <b dir="ltr">{link}</b></div>
 
@@ -173,13 +190,17 @@ export default function Dash() {
           <label>{t('desc')}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <label>{t('start_price')} (AED)</label><input inputMode="decimal" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
           <label>{t('increment')} (AED, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
+          <div className="notice" style={{ marginTop: 14 }}><b>{t('owner_section')}</b> <small className="muted">({t('host_only')} · {t('optional')})</small>
+            <label>{t('owner_name')}</label><input value={form.oname} onChange={e => setForm({ ...form, oname: e.target.value })} />
+            <label>{t('owner_phone')}</label><input inputMode="tel" dir="ltr" value={form.ophone} onChange={e => setForm({ ...form, ophone: e.target.value })} />
+            <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} /></div>
           <label>{t('image')}</label>
           <div className="row" style={{ gap: 8 }}><button className={'btn ' + (mode === 'photo' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('photo')}>{t('photo_mode')}</button><button className={'btn ' + (mode === 'code' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('code')}>{t('code_mode')}</button></div>
           {mode === 'photo' ? <input type="file" accept="image/*" style={{ marginTop: 10 }} onChange={e => setFile(e.target.files?.[0] || null)} />
             : <div className="notice" style={{ marginTop: 10 }}><div className="row"><b dir="ltr" style={{ fontSize: 22, letterSpacing: 2 }}>{code}</b><button className="btn light" onClick={() => setCode(genCode())}>{t('regenerate')}</button></div><div className="muted" style={{ marginTop: 6 }}>{t('code_hint')}</div></div>}
           <button className="btn gold full" disabled={!form.name || !form.start || !form.inc} onClick={addItem}>{t('save')}</button></div>
         <div className="card"><div className="bidlist">{items.map(i => (
-          <div className="person" key={i.id}><div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {i.auction_type === 'custom' && <span className="pill">{t('custom_badge')}</span>}<br /><small className="muted">{fmt(secrets[i.id]?.start_price_fils ?? i.start_price_fils, lang)} · +{fmt(secrets[i.id]?.increment_fils ?? i.increment_fils, lang)}</small></div>
+          <div className="person" key={i.id}><div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {i.auction_type === 'custom' && <span className="pill">{t('custom_badge')}</span>}<br /><small className="muted">{fmt(secrets[i.id]?.start_price_fils ?? i.start_price_fils, lang)} · +{fmt(secrets[i.id]?.increment_fils ?? i.increment_fils, lang)}</small>{priv[i.id] && (priv[i.id].owner_name || priv[i.id].owner_phone || priv[i.id].asked_price_fils != null) && <><br /><small className="muted">{t('owner_name')}: {priv[i.id].owner_name || '—'} <span dir="ltr">{ph(priv[i.id].owner_phone)}</span>{priv[i.id].asked_price_fils != null && <> · {t('asked_price')}: {fmt(priv[i.id].asked_price_fils, lang)}</>}</small></>}</div>
             <div className="person-actions"><span className={'pill ' + stPill(i.status)}>{i.status}</span>
               {(i.status === 'queued' || i.status === 'paused') && <button className="btn green" disabled={!liveSession} onClick={() => act('open', i.id)}>{t('open')}</button>}</div></div>))}</div></div>
       </div>}
@@ -196,7 +217,18 @@ export default function Dash() {
                 <div className="stat"><span className="muted">{t('participants')}</span><b>{parts[x.id] || 0}</b></div>
                 <div className="stat"><span className="muted">{t('total_sales')}</span><b>{fmt(total, lang)}</b></div>
                 <div className="stat"><span className="muted">{t('products_sold')}</span><b>{soldI.length}</b></div>
-                <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div></div>)
+                <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div>
+              {soldI.length > 0 && <button className="btn light full" style={{ marginTop: 12 }} onClick={() => setOpenSess(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('sold_products')} ({soldI.length}) {openSess[x.id] ? '▲' : '▼'}</button>}
+              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => {
+                const w = bidders.find(b => b.id === i.leader_bidder_id), p = priv[i.id], marks: string[] = p?.marks || ['pending']
+                return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
+                  <div className="row"><div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>}</div><b>{fmt(i.current_price_fils, lang)}</b></div>
+                  <div className="kv"><span>{t('winner')}</span><b>{i.leader_name} <span dir="ltr" className="muted">{ph(w?.phone)}</span></b></div>
+                  <div className="kv"><span>{t('owner_name')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
+                  {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>{MARKS.map(m => <button key={m} className={'btn ' + (marks.includes(m) ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => toggleMark(i.id, m)}>{marks.includes(m) ? '✓ ' : ''}{t('mark_' + m)}</button>)}</div>
+                </div>)
+              })}</div>}</div>)
           })}</div>}</div>}
 
       {tab === 'history' && <div className="card"><h3>{t('sold_items')}</h3>
@@ -225,7 +257,7 @@ export default function Dash() {
               <button className="btn light" onClick={() => statement(i)}>{t('download')}</button>
               {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
       </div>}
-      {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
+      {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       {toast && <div className="toast">{toast}</div>}
     </main>
   )
