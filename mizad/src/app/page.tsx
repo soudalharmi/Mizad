@@ -18,20 +18,24 @@ export default function Home() {
         <h2>{t('tagline')}</h2>
         <p className="muted">{t('platform_hint')}</p>
       </div>
-      {ready && (
+      {ready && (user && !user.phone ? (
+        <div className="card section" style={{ textAlign: 'center' }}>
+          <h3>{t('host_section')}</h3>
+          <Link href="/dashboard"><button className="btn gold full">{t('dashboard')}</button></Link>
+        </div>
+      ) : (
         <div className="card section" style={{ textAlign: 'start' }}>
           <h3>{t('bidders_title')}</h3>
           {user?.phone ? <button className="btn gold full" onClick={() => setProf(true)}>{t('my_profile')}</button>
-            : user ? <Link href="/dashboard"><button className="btn full">{t('dashboard')}</button></Link>
             : <BidderAuth onDone={load} />}
-        </div>)}
+        </div>))}
       <Link href="/explore"><button className="btn gold full section">{t('explore')}</button></Link>
-      <div className="card" style={{ textAlign: 'center' }}>
+      {!(user && !user.phone) && <div className="card" style={{ textAlign: 'center' }}>
         <h3>{t('host_section')}</h3>
         <p className="muted">{t('home_vendor')}</p>
         <Link href="/login?mode=up"><button className="btn full">{t('host_signup')}</button></Link>
         <p className="muted" style={{ margin: '10px 0 0' }}>{t('have_account')} <Link href="/login">{t('host_login')}</Link></p>
-      </div>
+      </div>}
       {prof && <Profile onClose={() => { setProf(false); load() }} />}
     </main>
   )
