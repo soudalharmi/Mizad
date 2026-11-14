@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
 
-// Platform account for bidders. One-time sign up (name + phone + password + SMS code), then phone + password.
+// Platform account for bidders. Sign up (name + phone + password + SMS code), then phone + password.
 // allowSignup=false (used on host pages) shows only sign-in plus a link to the platform sign-up page.
 export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in', next = '/' }: { onDone: () => void; allowSignup?: boolean; startMode?: 'in' | 'up'; next?: string }) {
   const { t } = useLang(); const db = sb()
