@@ -5,6 +5,7 @@ import { useLang } from './Lang'
 import PhoneInput from './PhoneInput'
 import { fmt } from '@/lib/money'
 import AvatarCropper from './AvatarCropper'
+import AlertsPanel from './AlertsPanel'
 
 export default function Profile({ onClose }: { onClose: () => void }) {
   const { t, lang } = useLang(); const db = sb()
@@ -67,6 +68,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
       {step === 'newcode' && <><p className="muted">{t('new_code_sent')}</p><input dir="ltr" inputMode="numeric" value={code} onChange={e => setCode(e.target.value)} />
         <button className="btn gold full" disabled={!code} onClick={verifyNew}>{t('verify')}</button></>}
       {msg && <p className="muted" style={{ color: ok ? 'var(--green)' : 'var(--red)' }}>{msg}</p>}
+      <AlertsPanel />
       <h3 style={{ marginTop: 20 }}>{t('purchases')}</h3>
       {buys.length === 0 ? <div className="empty">{t('no_purchases')}</div> : <div className="bidlist">{buys.map(i => (
         <div className="person" key={i.id}>
