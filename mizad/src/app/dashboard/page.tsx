@@ -27,7 +27,7 @@ export default function Dash() {
   const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
   const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
-  const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [showInv, setShowInv] = useState(false)
+  const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [vphone, setVphone] = useState(''), [showInv, setShowInv] = useState(false)
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
   const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
@@ -39,7 +39,7 @@ export default function Dash() {
     const q = (tb: string) => db.from(tb).select('*').eq('vendor_id', vv.id)
     const [a, b, c, d, e, f, g, h, k, l] = await Promise.all([
       q('auction_items').order('position'), q('bidders').order('created_at', { ascending: false }),
-      q('bids').order('created_at', { ascending: false }).limit(1000), q('support_contributions').order('created_at', { ascending: false }).limit(30),
+      q('bids').order('created_at', { ascending: false }).limit(1000), q('support_contributions').order('created_at', { ascending: false }).limit(2000),
       db.from('item_service_fees').select('*,auction_items(name)').eq('vendor_id', vv.id), q('invoices').order('created_at', { ascending: false }),
       q('item_secrets'), q('offers').order('created_at', { ascending: false }).limit(80), q('auctions').order('created_at', { ascending: false }), q('item_private')])
     setItems(a.data || []); setBidders(b.data || []); setBids(c.data || []); setSup(d.data || []); setFees(e.data || []); setInv(f.data || [])
@@ -85,7 +85,7 @@ export default function Dash() {
   const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
   const approveAll = async () => { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() }
   const pay = async (kind: string, invoiceId?: string) => { const j = await post('/api/vendor/pay', { kind, invoiceId }); if (j.url) location.href = j.url; else say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) }
-  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur }); error ? say(error.message) : load() }
+  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur, phone: vphone.trim() || null }); error ? say(error.message) : load() }
   const addItem = async () => {
     let image_url = null, ref_code: string | null = null
     if (mode === 'code') ref_code = code
@@ -128,6 +128,10 @@ export default function Dash() {
         <div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {p?.category && <span className="pill">{p.category}</span>}</div></div>
         <b>{fmt(i.current_price_fils, lang)}</b></div>
       <div className="kv"><span>{t('buyer')}</span><b>{i.leader_name} <span dir="ltr" className="muted">{ph(w?.phone)}</span></b></div>
+      {sup.filter(s => s.item_id === i.id && s.beneficiary_id === i.leader_bidder_id && ['authorized', 'captured'].includes(s.status)).map(s => {
+        const sb_ = bidders.find(b => b.id === s.supporter_id)
+        return <div className="kv" key={s.id}><span>{t('supported_by')}</span><b>{s.supporter_name} <span dir="ltr" className="muted">{ph(sb_?.phone)}</span> · {fmt(s.amount_fils, lang)}</b></div>
+      })}
       <div className="kv"><span>{t('seller')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
       {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
       <div className="kv"><span>{t('date')}</span><b>{i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</b></div>
@@ -152,6 +156,7 @@ export default function Dash() {
   if (!v) return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('create_page')}</h2>
     <label>{t('store_name')}</label><input value={vname} onChange={e => setVname(e.target.value)} />
     <label>{t('slug')}</label><input dir="ltr" value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-auction" />
+    <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={vphone} onChange={e => setVphone(e.target.value)} />
     <label>{t('currency')}</label><select value={vcur} onChange={e => setVcur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
     <p className="muted">{t('currency_hint')}</p>
     <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
@@ -188,7 +193,7 @@ export default function Dash() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /><path d="M8 21h8" /></svg>{t('stream_mode')}</button></div>
         : <div className="card section">{unbilled + openInv > 0 ? <>
             <div className="notice" style={{ marginTop: 0 }}><b>{t('fees_due_title')}</b><div style={{ marginTop: 4 }}>{t('fees_due_text')}</div><div style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{fmt(unbilled + openInv, lang, 'AED')}</div></div>
-            <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
+            <button className="btn gold full" onClick={() => { setTab('billing'); window.scrollTo(0, 0) }}>{t('pay_fees_now')}</button>
             <button className="btn full" style={{ marginTop: 8, opacity: .45 }} disabled>{t('start_session')}</button></>
           : <><p className="muted" style={{ marginTop: 0 }}>{t('session_none')}</p><input placeholder={t('session_title_ph')} value={sTitle} onChange={e => setSTitle(e.target.value)} />
             <button className="btn gold full" onClick={() => sessionAct('start')}>{t('start_session')}</button></>}</div>}
@@ -236,7 +241,7 @@ export default function Dash() {
         <div className="card"><h3>{t('ledger')}</h3>
           {sup.length === 0 ? <div className="empty">—</div> : <div className="bidlist">{sup.map(s => (
             <div className="bidrow" key={s.id}><div><strong>{s.supporter_name} → {s.beneficiary_name}</strong><br /><small>{fmt(s.price_before_fils, lang)} → {fmt(s.price_after_fils, lang)}</small></div>
-              <div style={{ textAlign: 'end' }}><b>{fmt(s.amount_fils, lang)}</b><br /><span className={'pill ' + (s.status === 'authorized' || s.status === 'captured' ? 'green' : s.status === 'pending_payment' ? 'gold' : 'red')}>{s.status}</span></div></div>))}</div>}
+              <div style={{ textAlign: 'end' }}><b>{fmt(s.amount_fils, lang)}</b><br /><span className={'pill ' + (s.status === 'authorized' || s.status === 'captured' ? 'green' : 'gold')}>{s.status === 'authorized' || s.status === 'captured' ? t('support_done') : s.status}</span></div></div>))}</div>}
         </div>
       </div></>}
 
@@ -345,13 +350,7 @@ export default function Dash() {
           <span className="muted">{t('outstanding')}</span>
           <div style={{ fontSize: 40, fontWeight: 700, margin: '8px 0 16px' }}>{fmt(unbilled + openInv, lang, 'AED')}</div>
           {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
-            : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}
-          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{fees.length} × {fmt(fees[0]?.amount_fils ?? 250, lang, 'AED')}</p></div>
-        {inv.length > 0 && <div className="card"><button className="btn light full" onClick={() => setShowInv(o => !o)}>{t('invoices')} ({inv.length}) {showInv ? '▲' : '▼'}</button>
-          {showInv && <div className="bidlist" style={{ marginTop: 10 }}>{inv.map(i => (
-            <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang, 'AED')}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
-              <div className="person-actions"><span className={'pill ' + (i.status === 'paid' ? 'green' : 'gold')}>{i.status === 'paid' ? t('paid') : t('open_s')}</span>
-                <button className="btn light" onClick={() => statement(i)}>{t('download')}</button></div></div>))}</div>}</div>}
+            : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}</div>
       </div>}
       {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
