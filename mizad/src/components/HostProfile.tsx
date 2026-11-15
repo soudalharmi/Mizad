@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
 import AvatarCropper from './AvatarCropper'
+import PhoneInput from './PhoneInput'
 import { PLATFORMS } from '@/lib/social'
 import { CURRENCIES, currencyLabel } from '@/lib/currency'
 
@@ -34,7 +35,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
           <label className="btn light" style={{ margin: 0, cursor: 'pointer' }}>{t('change_photo')}<input type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setCrop(f) }} /></label>
         </div>
         <label>{t('store_name')}</label><input value={name} onChange={e => setName(e.target.value)} />
-        <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
+        <label>{t('host_phone')}</label><PhoneInput value={phone} onChange={setPhone} />
         <label>{t('currency')}</label><input value={currencyLabel(CURRENCIES.find(c => c.code === cur) || CURRENCIES[0], lang)} disabled />
         <label>{t('bio')}</label><textarea maxLength={300} value={bio} onChange={e => setBio(e.target.value)} />
         <h4 style={{ marginBottom: 0 }}>{t('social_accounts')}</h4><div className="muted">{t('social_hint')}</div>

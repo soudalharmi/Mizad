@@ -5,6 +5,8 @@ import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
 import { aedToFils, fmt, setCurrency } from '@/lib/money'
 import { compressImage } from '@/lib/image'
+import PhoneInput from '@/components/PhoneInput'
+import { normalizePhone } from '@/lib/phone'
 import { CURRENCIES, currencyLabel } from '@/lib/currency'
 import StreamMode from '@/components/StreamMode'
 import HostProfile from '@/components/HostProfile'
@@ -104,7 +106,7 @@ export default function Dash() {
     if (j.url) { location.href = j.url; return }
     say((t(j.error) === j.error ? t('GENERIC') : t(j.error)) + (j.detail ? ' (' + j.detail + ')' : ''))
   }
-  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur, phone: vphone.trim() || null }); error ? say(error.message) : load() }
+  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur, phone: normalizePhone(vphone) || null }); error ? say(error.message) : load() }
   const addItem = async () => {
     let image_url = null, ref_code: string | null = null
     if (mode === 'code') ref_code = code
@@ -158,7 +160,7 @@ export default function Dash() {
       <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
       {ed && <div className="notice" style={{ marginTop: 8 }}>
         <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
-        <label>{t('owner_phone')}</label><input dir="ltr" inputMode="tel" value={editP.ophone} onChange={e => setEditP({ ...editP, ophone: e.target.value })} />
+        <label>{t('owner_phone')}</label><PhoneInput value={editP.ophone} onChange={(x: string) => setEditP({ ...editP, ophone: x })} />
         <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
         <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
         <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
@@ -179,7 +181,7 @@ export default function Dash() {
       <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
       {ed && <div className="notice" style={{ marginTop: 8 }}>
         <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
-        <label>{t('owner_phone')}</label><input dir="ltr" inputMode="tel" value={editP.ophone} onChange={e => setEditP({ ...editP, ophone: e.target.value })} />
+        <label>{t('owner_phone')}</label><PhoneInput value={editP.ophone} onChange={(x: string) => setEditP({ ...editP, ophone: x })} />
         <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
         <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
         <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
@@ -196,7 +198,7 @@ export default function Dash() {
   if (!v) return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('create_page')}</h2>
     <label>{t('store_name')}</label><input value={vname} onChange={e => setVname(e.target.value)} />
     <label>{t('slug')}</label><input dir="ltr" value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-auction" />
-    <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={vphone} onChange={e => setVphone(e.target.value)} />
+    <label>{t('host_phone')}</label><PhoneInput value={vphone} onChange={setVphone} />
     <label>{t('currency')}</label><select value={vcur} onChange={e => setVcur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
     <div className="notice" style={{ marginTop: 8, fontSize: 13 }}>⚠ {t('currency_final')}</div>
     <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
@@ -309,7 +311,7 @@ export default function Dash() {
           <label>{t('increment')} ({v.currency || 'AED'}, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
           <div className="notice" style={{ marginTop: 14 }}><b>{t('owner_section')}</b> <small className="muted">({t('host_only')} · {t('optional')})</small>
             <label>{t('owner_name')}</label><input value={form.oname} onChange={e => setForm({ ...form, oname: e.target.value })} />
-            <label>{t('owner_phone')}</label><input inputMode="tel" dir="ltr" value={form.ophone} onChange={e => setForm({ ...form, ophone: e.target.value })} />
+            <label>{t('owner_phone')}</label><PhoneInput value={form.ophone} onChange={(x: string) => setForm({ ...form, ophone: x })} />
             <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} />
             <label>{t('category')}</label><input list="cats" value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} /><datalist id="cats">{Array.from(new Set(Object.values(priv).map((x: any) => x.category).filter(Boolean))).map((c: any) => <option key={c} value={c} />)}</datalist></div>
           <label>{t('image')}</label>

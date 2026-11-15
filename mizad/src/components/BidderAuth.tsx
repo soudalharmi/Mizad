@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
 import TermsNotice from './TermsNotice'
+import PhoneInput from './PhoneInput'
+import { normalizePhone } from '@/lib/phone'
 
 // Platform account for bidders.
 // Sign up: nickname + phone + date of birth + password. Sign in: phone + password.
@@ -14,7 +16,7 @@ export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in
   const [mode, setMode] = useState<'in' | 'up' | 'reset'>(allowSignup ? startMode : 'in')
   const [name, setName] = useState(''), [phone, setPhone] = useState(''), [dob, setDob] = useState(''), [pw, setPw] = useState('')
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
-  const norm = (p: string) => '+' + p.replace(/\D/g, '')
+  const norm = (p: string) => normalizePhone(p)
   const tr = (c: string) => (t(c) === c ? t('GENERIC') : t(c))
   const post = async (url: string, body: any) => { try { return await (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json() } catch { return { error: 'GENERIC' } } }
 
@@ -53,7 +55,7 @@ export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in
       {mode === 'reset' && <h3 style={{ marginBottom: 4 }}>{t('reset_pw')}</h3>}
       {mode === 'reset' && <p className="muted" style={{ marginTop: 0 }}>{t('reset_hint_bidder')}</p>}
       {mode === 'up' && <><label>{t('nickname')}</label><input value={name} maxLength={40} onChange={e => setName(e.target.value)} /></>}
-      <label>{t('phone')}</label><input dir="ltr" inputMode="tel" autoComplete="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
+      <label>{t('phone')}</label><PhoneInput value={phone} onChange={setPhone} />
       {mode !== 'in' && <><label>{t('dob')}</label><input type="date" dir="ltr" value={dob} max={new Date().toISOString().slice(0, 10)} onChange={e => setDob(e.target.value)} /></>}
       <label>{mode === 'reset' ? t('new_password') : t('password')}</label>
       <input type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} value={pw} onChange={e => setPw(e.target.value)} />

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
 import TermsNotice from '@/components/TermsNotice'
+import PhoneInput from '@/components/PhoneInput'
 import { slugify } from '@/lib/slug'
 import { CURRENCIES, currencyLabel } from '@/lib/currency'
 
@@ -57,7 +58,7 @@ export default function Login() {
           <label>{t('store_name')}</label><input value={aname} maxLength={60} onChange={e => setAname(e.target.value)} />
           {preview && <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>{t('your_link')}: <span dir="ltr">mazadboss.netlify.app/{preview}</span></p>}
         </>}
-        {mode !== 'in' && <><label>{t('phone')}</label><input dir="ltr" inputMode="tel" autoComplete="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} /></>}
+        {mode !== 'in' && <><label>{t('phone')}</label><PhoneInput value={phone} onChange={setPhone} /></>}
         {mode === 'up' && <>
           <label>{t('currency')}</label><select value={cur} onChange={e => setCur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
           <div className="notice" style={{ marginTop: 8, fontSize: 13 }}>⚠ {t('currency_final')}</div>

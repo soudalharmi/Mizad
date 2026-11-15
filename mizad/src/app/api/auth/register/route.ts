@@ -4,12 +4,13 @@ import { allow } from '@/lib/rate'
 import { validDob } from '@/lib/dob'
 import { CURRENCIES } from '@/lib/currency'
 import { slugify } from '@/lib/slug'
+import { normalizePhone } from '@/lib/phone'
 
 // Creates an account on the server so no SMS/email code is needed.
 // kind 'bidder': nickname, phone, dob, password.  kind 'host': email, auctionName, phone, dob, password, currency (also creates the auction page).
 // The browser then signs in with the same password.
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
-const normPhone = (p: string) => '+' + String(p || '').replace(/\D/g, '')
+const normPhone = (p: string) => normalizePhone(String(p || ''))
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'x'

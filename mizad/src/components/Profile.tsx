@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
+import PhoneInput from './PhoneInput'
 import { fmt } from '@/lib/money'
 import AvatarCropper from './AvatarCropper'
 
@@ -61,7 +62,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
       <div className="kv"><b dir="ltr">{cur}</b>{step === 'idle' && <button className="btn light" onClick={startChange}>{t('change_phone')}</button>}</div>
       {step === 'cur' && <><p className="muted">{t('cur_code_sent')}</p><input dir="ltr" inputMode="numeric" value={code} onChange={e => setCode(e.target.value)} />
         <button className="btn full" disabled={!code} onClick={verifyCur}>{t('verify')}</button></>}
-      {step === 'new' && <><label>{t('new_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={np} onChange={e => setNp(e.target.value)} />
+      {step === 'new' && <><label>{t('new_phone')}</label><PhoneInput value={np} onChange={setNp} />
         <button className="btn full" disabled={np.replace(/\D/g, '').length < 8} onClick={sendNew}>{t('send_code')}</button></>}
       {step === 'newcode' && <><p className="muted">{t('new_code_sent')}</p><input dir="ltr" inputMode="numeric" value={code} onChange={e => setCode(e.target.value)} />
         <button className="btn gold full" disabled={!code} onClick={verifyNew}>{t('verify')}</button></>}
