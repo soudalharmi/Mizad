@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
+import TermsNotice from './TermsNotice'
 
 // Platform account for bidders. Sign up (name + phone + password + SMS code), then phone + password.
 // allowSignup=false (used on host pages) shows only sign-in plus a link to the platform sign-up page.
@@ -46,6 +47,7 @@ export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in
         <label>{t('phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
         <label>{t('password')}</label><input type="password" value={pw} onChange={e => setPw(e.target.value)} />
         <button className="btn gold full" disabled={busy || !phone || !pw} onClick={mode === 'in' ? signIn : signUp}>{mode === 'in' ? t('signin') : t('create_account')}</button>
+        {mode === 'up' && <TermsNotice />}
         {!allowSignup && <p className="muted" style={{ textAlign: 'center' }}>{t('no_account')} <Link href={'/signup?next=' + encodeURIComponent(next)}>{t('create_platform')}</Link></p>}
       </>) : (<>
         <label>{t('code')}</label><input dir="ltr" inputMode="numeric" value={code} onChange={e => setCode(e.target.value)} />
