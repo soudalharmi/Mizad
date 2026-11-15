@@ -14,7 +14,7 @@ export default function Explore() {
     const ids = Array.from(new Set((au || []).map((x: any) => x.vendor_id)))
     if (!ids.length) return setRows([])
     const [vs, its] = await Promise.all([
-      db.from('vendors').select('id,name,slug,logo_url,bio,socials').in('id', ids).eq('status', 'active'),
+      db.from('vendors').select('id,name,slug,logo_url,bio,socials,currency').in('id', ids).eq('status', 'active'),
       db.from('auction_items').select('vendor_id,name,current_price_fils,auction_type,revealed,image_url').in('vendor_id', ids).eq('status', 'live')])
     const live: Record<string, any> = Object.fromEntries((its.data || []).map((x: any) => [x.vendor_id, x]))
     setRows((vs.data || []).map((v: any) => ({ ...v, item: live[v.id], started_at: (au || []).find((a: any) => a.vendor_id === v.id)?.started_at })))
@@ -33,7 +33,7 @@ export default function Explore() {
               <div style={{ flex: 1, minWidth: 0 }}><b style={{ fontSize: 18 }}>{v.name}</b> <span className="pill green">{t('live_now')}</span>
                 {v.bio && <div className="muted">{v.bio}</div>}</div>
             </div>
-            {v.item && <div className="notice" style={{ marginTop: 12 }}>{t('now_selling')}: <b>{v.item.name}</b> · {v.item.auction_type === 'custom' && !v.item.revealed ? '' : fmt(v.item.current_price_fils, lang)}</div>}
+            {v.item && <div className="notice" style={{ marginTop: 12 }}>{t('now_selling')}: <b>{v.item.name}</b> · {v.item.auction_type === 'custom' && !v.item.revealed ? '' : fmt(v.item.current_price_fils, lang, v.currency)}</div>}
             <SocialLinks socials={v.socials} />
             <Link href={`/${v.slug}/live`}><button className="btn gold full" style={{ marginTop: 12 }}>{t('join_auction')}</button></Link>
           </div>))}
