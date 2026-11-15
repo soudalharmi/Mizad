@@ -8,7 +8,7 @@ import { CURRENCIES, currencyLabel } from '@/lib/currency'
 
 export default function HostProfile({ vendor, onClose }: { vendor: any; onClose: () => void }) {
   const { t, lang } = useLang(); const db = sb()
-  const [name, setName] = useState(vendor.name || ''), [bio, setBio] = useState(vendor.bio || ''), [cur, setCur] = useState(vendor.currency || 'AED'), [soc, setSoc] = useState<Record<string, string>>(vendor.socials || {})
+  const [name, setName] = useState(vendor.name || ''), [bio, setBio] = useState(vendor.bio || ''), [cur, setCur] = useState(vendor.currency || 'AED'), [phone, setPhone] = useState(vendor.phone || ''), [soc, setSoc] = useState<Record<string, string>>(vendor.socials || {})
   const [logo, setLogo] = useState<string>(vendor.logo_url || ''), [crop, setCrop] = useState<File | null>(null), [msg, setMsg] = useState(''), [busy, setBusy] = useState(false)
   const upload = async (blob: Blob) => {
     setCrop(null); setBusy(true)
@@ -20,7 +20,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
   const save = async () => {
     setBusy(true)
     const clean = Object.fromEntries(Object.entries(soc).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v))
-    const { error } = await db.from('vendors').update({ name: name.trim(), bio: bio.trim() || null, socials: clean, logo_url: logo || null, currency: cur }).eq('id', vendor.id)
+    const { error } = await db.from('vendors').update({ name: name.trim(), bio: bio.trim() || null, socials: clean, logo_url: logo || null, currency: cur, phone: phone.trim() || null }).eq('id', vendor.id)
     setBusy(false); if (error) return setMsg(error.message.includes('CURRENCY_LOCKED') ? t('CURRENCY_LOCKED') : error.message)
     onClose()
   }
@@ -34,6 +34,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
           <label className="btn light" style={{ margin: 0, cursor: 'pointer' }}>{t('change_photo')}<input type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setCrop(f) }} /></label>
         </div>
         <label>{t('store_name')}</label><input value={name} onChange={e => setName(e.target.value)} />
+        <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
         <label>{t('currency')}</label><select value={cur} onChange={e => setCur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
         <label>{t('bio')}</label><textarea maxLength={300} value={bio} onChange={e => setBio(e.target.value)} />
         <h4 style={{ marginBottom: 0 }}>{t('social_accounts')}</h4><div className="muted">{t('social_hint')}</div>
