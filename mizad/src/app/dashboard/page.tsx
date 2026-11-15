@@ -166,7 +166,7 @@ export default function Dash() {
 
   const liveSession = sessions.find(x => x.status === 'live')
   const cur = items.find(i => i.status === 'live') || items.find(i => i.status === 'paused') || items.find(i => i.status === 'queued')
-  const supTotal = cur ? cur.current_price_fils - cur.base_bid_fils : 0
+  const supTotal = cur ? sup.filter(s => s.item_id === cur.id && s.beneficiary_id === cur.leader_bidder_id && ['authorized', 'captured'].includes(s.status)).reduce((n, s) => n + Number(s.amount_fils), 0) : 0
   const unbilled = fees.filter(f => !f.invoice_id).reduce((s, f) => s + f.amount_fils, 0)
   const openInv = inv.filter(i => i.status === 'open').reduce((s, i) => s + i.total_fils, 0)
   setCurrency(v.currency)
@@ -209,7 +209,6 @@ export default function Dash() {
                 <div className="stat"><span className="muted">{t('winner')}</span><b style={{ fontSize: 16 }}>{cur.leader_name || '—'}</b></div>
                 <div className="stat"><span className="muted">{t('bids_count')}</span><b>{cur.bid_count}</b></div>
               </div>
-              <div className="kv"><span>{t('base_bid')}</span><b>{fmt(cur.base_bid_fils, lang)}</b></div>
               <div className="kv"><span>{t('support_total')}</span><b>{fmt(cur.auction_type === 'custom' && !cur.revealed ? 0 : supTotal, lang)}</b></div>
               {cur.auction_type === 'custom' && secrets[cur.id] && <><div className="kv"><span>{t('host_start')} <small className="muted">({t('host_only')})</small></span><b>{fmt(secrets[cur.id].start_price_fils, lang)}</b></div>
                 <div className="kv"><span>{t('host_inc')} <small className="muted">({t('host_only')})</small></span><b>{fmt(secrets[cur.id].increment_fils, lang)}</b></div></>}
