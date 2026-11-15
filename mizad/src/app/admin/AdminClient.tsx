@@ -8,7 +8,10 @@ const fmt = (n: number, l: string) => fmt0(n, l, 'AED')
 export default function AdminClient({ overview: o, settings, outstanding = [] }: any) {
   const { t, lang } = useLang(); const r = useRouter(); const [s, setS] = useState(settings), [msg, setMsg] = useState('')
   const post = async (body: any) => { const j = await (await fetch('/api/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json(); setMsg(j.error || '✓'); r.refresh() }
-  const num = (k: string) => (e: any) => setS({ ...s, [k]: parseInt(e.target.value || '0', 10) })
+  // Admin types amounts in AED (e.g. 2.5); they are stored as fils (x100) without floating-point drift.
+  const [aed, setAed] = useState<Record<string, string>>(() => Object.fromEntries(['activation_fee_fils', 'item_fee_fils', 'min_session_fee_fils', 'billing_threshold_fils'].map(k => [k, String((settings?.[k] || 0) / 100)])))
+  const toFils = (x: string) => { const [a, b = ''] = String(x || '0').trim().split('.'); return (parseInt(a || '0', 10) || 0) * 100 + (parseInt((b + '00').slice(0, 2), 10) || 0) }
+  const money = (k: string) => <input inputMode="decimal" value={aed[k] ?? ''} onChange={e => { const val = e.target.value.replace(/[^0-9.]/g, ''); setAed({ ...aed, [k]: val }); setS({ ...s, [k]: toFils(val) }) }} />
   const stat = (l: string, v: any) => <div className="stat"><span className="muted">{l}</span><b>{v}</b></div>
   return (
     <main className="wrap">
@@ -33,11 +36,13 @@ export default function AdminClient({ overview: o, settings, outstanding = [] }:
                 {v.status === 'suspended' && <button className="btn green" onClick={() => post({ action: 'vendor', id: v.id, status: 'active' })}>{t('reactivate')}</button>}</td></tr>))}</tbody></table>
         </div>
         <div className="card"><h3>{t('settings')}</h3>
-          <label>{t('activation_fee')}</label><input type="number" value={s.activation_fee_fils} onChange={num('activation_fee_fils')} />
-          <label>{t('item_fee')}</label><input type="number" value={s.item_fee_fils} onChange={num('item_fee_fils')} />
+          <label>{t('activation_fee')} (AED)</label>{money('activation_fee_fils')}
+          <label>{t('item_fee')} (AED)</label>{money('item_fee_fils')}
+          <label>{t('min_session_fee')} (AED)</label>{money('min_session_fee_fils')}
+          <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>{t('min_session_fee_hint')}</p>
           <label>{t('billing_mode')}</label><select value={s.billing_mode} onChange={e => setS({ ...s, billing_mode: e.target.value })}>
             <option value="manual">manual</option><option value="per_session">per_session</option><option value="threshold">threshold</option></select>
-          <label>{t('threshold')}</label><input type="number" value={s.billing_threshold_fils} onChange={num('billing_threshold_fils')} />
+          <label>{t('threshold')} (AED)</label>{money('billing_threshold_fils')}
           <button className="btn gold full" onClick={() => post({ action: 'settings', values: s })}>{t('save')}</button>
           {msg && <p className="muted">{msg}</p>}
         </div>

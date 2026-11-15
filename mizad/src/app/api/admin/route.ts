@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const v = b.values
     const { error } = await db.from('platform_settings').update({
       activation_fee_fils: v.activation_fee_fils, item_fee_fils: v.item_fee_fils, billing_mode: v.billing_mode,
-      billing_threshold_fils: v.billing_threshold_fils, updated_at: new Date().toISOString() }).eq('id', 1)
+      billing_threshold_fils: v.billing_threshold_fils, min_session_fee_fils: v.min_session_fee_fils ?? 0, updated_at: new Date().toISOString() }).eq('id', 1)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     await db.rpc('audit', { p_vendor: null, p_actor: u.id, p_action: 'settings.updated', p_entity: 'settings', p_id: null, p_data: v })
   } else if (b.action === 'vendor') {

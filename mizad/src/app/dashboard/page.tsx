@@ -29,7 +29,7 @@ export default function Dash() {
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [vphone, setVphone] = useState(''), [showInv, setShowInv] = useState(false)
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({}), [rs, setRs] = useState<'sold' | 'returned'>('sold'), [openRet, setOpenRet] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 9000) }
 
@@ -150,9 +150,30 @@ export default function Dash() {
         <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
     </div>)
   }
+  const renderReturn = (i: any) => {
+    const p = priv[i.id], ed = editP?.id === i.id
+    return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
+      <div className="row"><div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '—'}</b>}</div>
+        <div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {p?.category && <span className="pill">{p.category}</span>}</div></div>
+        <span className="pill">{t('returned_one')}</span></div>
+      <div className="kv"><span>{t('seller')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
+      {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
+      {i.auction_type !== 'custom' && <div className="kv"><span>{t('start_price')}</span><b>{fmt(i.start_price_fils, lang)}</b></div>}
+      <div className="kv"><span>{t('date')}</span><b>{i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</b></div>
+      <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
+      {ed && <div className="notice" style={{ marginTop: 8 }}>
+        <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
+        <label>{t('owner_phone')}</label><input dir="ltr" inputMode="tel" value={editP.ophone} onChange={e => setEditP({ ...editP, ophone: e.target.value })} />
+        <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
+        <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
+        <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
+    </div>)
+  }
   const ph = (p?: string) => p ? (String(p).startsWith('+') ? p : '+' + p) : ''
   const statement = (i: any) => {
-    const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || '').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
+    const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || 'Session minimum fee').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
     const blob = new Blob([`item,fee_AED\n${rows.join('\n')}\ntotal,${(i.total_fils / 100).toFixed(2)}`], { type: 'text/csv' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mizad-statement-${i.id.slice(0, 8)}.csv`; a.click()
   }
@@ -318,17 +339,20 @@ export default function Dash() {
       {tab === 'sales' && salesView === 'all' && <div className="card"><h3>{t('tab_sales')}</h3>
         {(() => {
           const q = sq.trim().toLowerCase()
-          const sold = items.filter(i => i.status === 'sold').sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0))
+          const sold = items.filter(i => i.status === (rs === 'sold' ? 'sold' : 'unsold')).sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0))
           const list = sold.filter(i => {
             const p = priv[i.id], w = bidders.find(b => b.id === i.leader_bidder_id), marks: string[] = p?.marks || ['pending']
-            if (sf !== 'all' && !marks.includes(sf)) return false
+            if (rs === 'sold' && sf !== 'all' && !marks.includes(sf)) return false
             if (!q) return true
             return [i.name, i.ref_code, p?.owner_name, p?.category, i.leader_name, w?.name].some(x => String(x || '').toLowerCase().includes(q)) || phoneHit(p?.owner_phone, q) || phoneHit(w?.phone, q)
           })
           return (<>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button className={'btn ' + (rs === 'sold' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setRs('sold')}>{t('sold_tab')} ({items.filter(i => i.status === 'sold').length})</button>
+              <button className={'btn ' + (rs === 'returned' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setRs('returned')}>{t('returned')} ({items.filter(i => i.status === 'unsold').length})</button></div>
             <input placeholder={t('search_products')} value={sq} onChange={e => setSq(e.target.value)} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>{['all', ...MARKS].map(m => <button key={m} className={'btn ' + (sf === m ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setSf(m)}>{m === 'all' ? t('all') : t('mark_' + m)}</button>)}</div>
-            {sold.length === 0 ? <div className="empty">{t('no_history')}</div> : list.length === 0 ? <div className="empty">{t('no_results')}</div> : <div className="bidlist">{list.map(i => renderSale(i))}</div>}</>)
+            {rs === 'sold' && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>{['all', ...MARKS].map(m => <button key={m} className={'btn ' + (sf === m ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setSf(m)}>{m === 'all' ? t('all') : t('mark_' + m)}</button>)}</div>}
+            {sold.length === 0 ? <div className="empty" style={{ marginTop: 10 }}>{rs === 'sold' ? t('no_history') : t('no_returned')}</div> : list.length === 0 ? <div className="empty">{t('no_results')}</div> : <div className="bidlist" style={{ marginTop: 10 }}>{list.map(i => rs === 'sold' ? renderSale(i) : renderReturn(i))}</div>}</>)
         })()}</div>}
 
       {tab === 'sales' && salesView === 'sessions' && <div className="card"><h3>{t('sessions_title')}</h3>
@@ -345,7 +369,9 @@ export default function Dash() {
                 <div className="stat"><span className="muted">{t('products_sold')}</span><b>{soldI.length}</b></div>
                 <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div>
               {soldI.length > 0 && <button className="btn light full" style={{ marginTop: 12 }} onClick={() => setOpenSess(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('sold_products')} ({soldI.length}) {openSess[x.id] ? '▲' : '▼'}</button>}
-              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}</div>)
+              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}
+              {ret.length > 0 && <button className="btn light full" style={{ marginTop: 8 }} onClick={() => setOpenRet(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('returned_products')} ({ret.length}) {openRet[x.id] ? '▲' : '▼'}</button>}
+              {openRet[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{ret.map(i => renderReturn(i))}</div>}</div>)
           })}</div>}</div>}
 
       {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
