@@ -82,7 +82,7 @@ export default function Dash() {
   const logout = async () => { await db.auth.signOut({ scope: 'local' }); router.push('/login') }
   const decide = async (offerId: string, accept: boolean) => { const j = await post('/api/vendor/offer', { offerId, accept }); j.error ? say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) : load() }
   const setStatus = async (id: string, status: string) => { await db.from('bidders').update({ status }).eq('id', id); load() }
-  const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
+  const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); if (!error && nv) { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() } error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
   const approveAll = async () => { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() }
   const pay = async (kind: string, invoiceId?: string) => {
     let j: any = {}
@@ -382,7 +382,7 @@ export default function Dash() {
           {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
             : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}</div>
       </div>}
-      {streaming && <StreamMode items={items} bidders={bidders} sup={sup} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
+      {streaming && <StreamMode items={items} bidders={bidders} sup={sup} offers={offers} onDecide={decide} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
       <div style={{ height: 96 }} />
       <nav className="bottomnav" aria-label="tabs">{['auction', 'products', 'bidders', 'sales'].map(k => <button key={k} className={'bn-item' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>

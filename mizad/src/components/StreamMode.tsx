@@ -16,7 +16,7 @@ function Avatar({ url, name, size }: { url?: string; name?: string; size: string
   )
 }
 
-export default function StreamMode({ items, bidders, sup = [], vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
+export default function StreamMode({ items, bidders, sup = [], offers = [], onDecide, vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
   const item = useMemo(() => {
     const live = items.find((i: any) => i.status === 'live'); if (live) return live
     const paused = items.find((i: any) => i.status === 'paused'); if (paused) return paused
@@ -31,6 +31,11 @@ export default function StreamMode({ items, bidders, sup = [], vendorName, lang,
   const leaderSup = useMemo(() => !item || hidden ? [] : sup.filter((s: any) => s.item_id === item.id && s.beneficiary_id === item.leader_bidder_id && ['authorized', 'captured'].includes(s.status))
     .sort((a: any, b: any) => +new Date(b.created_at || 0) - +new Date(a.created_at || 0)), [sup, item?.id, item?.leader_bidder_id, hidden])
   const lastSup = leaderSup[0]
+  // Sell order (custom auction): pending offers, highest first, so the host can accept or reject on the stream screen.
+  const pendingOffers = useMemo(() => !item || !hidden ? [] : offers.filter((o: any) => o.item_id === item.id && o.status === 'pending')
+    .sort((a: any, b: any) => b.amount_fils - a.amount_fils), [offers, item?.id, hidden])
+  const [busyOffer, setBusyOffer] = useState('')
+  const decideOffer = async (id: string, ok: boolean) => { if (!onDecide || busyOffer) return; setBusyOffer(id); try { await onDecide(id, ok) } finally { setBusyOffer('') } }
   const sig = item ? `${item.id}:${item.leader_bidder_id}:${item.current_price_fils}:${item.bid_count}` : 'none'
 
   const [disp, setDisp] = useState(target), [flash, setFlash] = useState(0), [line, setLine] = useState(0)
@@ -72,7 +77,18 @@ export default function StreamMode({ items, bidders, sup = [], vendorName, lang,
         {item && (<>
           <div className="itemname">{item.name}{item.ref_code && <span className="code" dir="ltr">{item.ref_code}</span>}</div>
           {item.status === 'paused' && <div className="paused">{t('stream_paused')}</div>}
-          {hidden ? <div className="custom">{t('stream_custom')}</div> : sold ? (<>
+          {hidden ? (<>
+            <div className="custom">{t('stream_custom')}</div>
+            <div className="offers">
+              <div className="offhead">{t('stream_offers')} · {pendingOffers.length}</div>
+              {pendingOffers.length === 0 ? <div className="offempty">{t('stream_no_offers')}</div> : pendingOffers.slice(0, 5).map((o: any, n: number) => (
+                <div className={'offer' + (n === 0 ? ' top1' : '')} key={o.id}>
+                  <span className="offname"><Avatar url={avatarOf(o.bidder_id)} name={o.bidder_name} size="clamp(36px,6vw,48px)" /><span>{o.bidder_name}</span></span>
+                  <span className="offamt">{fmt(o.amount_fils, lang)}</span>
+                  <span className="acts"><button className="ok" disabled={!!busyOffer} onClick={() => decideOffer(o.id, true)} aria-label={t('accept')}>✓</button><button className="no" disabled={!!busyOffer} onClick={() => decideOffer(o.id, false)} aria-label={t('reject')}>✕</button></span>
+                </div>))}
+              {pendingOffers.length > 5 && <div className="more">+{pendingOffers.length - 5}</div>}
+            </div></>) : sold ? (<>
             <div className="congrats">{t('stream_congrats')}</div>
             <div className="winner" key={'s' + sig}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div>
             <div className="amount sold">{fmt(item.current_price_fils, lang)}</div>
@@ -149,6 +165,15 @@ const CSS = `
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 @keyframes floats{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes supglow{0%,100%{box-shadow:0 0 18px #a77b3c33}50%{box-shadow:0 0 38px #d7b77f77}}
+.offers{width:min(620px,100%);margin:clamp(14px,3vh,28px) auto 0;background:#0c0c0cd9;border:1px solid #a77b3c66;border-radius:18px;padding:12px;text-align:start}
+.offhead{font-size:12px;letter-spacing:2px;color:#d7b77f;margin-bottom:6px}
+.offempty{color:#8f8a7e;font-size:clamp(14px,2.4vw,18px);padding:10px 4px}
+.offer{display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid #ffffff12}
+.offer.top1{background:#a77b3c1f;border-radius:12px;border-top-color:transparent}
+.offname{display:flex;align-items:center;gap:10px;flex:1;min-width:0;font-size:clamp(15px,2.8vw,22px);font-weight:600}.offname>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.offamt{font-size:clamp(17px,3.4vw,28px);font-weight:700;color:#e9cf98;white-space:nowrap;font-variant-numeric:tabular-nums}
+.offer .acts button{width:42px;height:42px;font-size:18px}
+.offer .acts button:disabled{opacity:.5}
 .winner.dim{color:#5c584f;font-size:clamp(20px,4vw,40px);animation:none}
 .motiv{margin-top:clamp(14px,3vh,30px);font-size:clamp(14px,2.6vw,26px);color:#d7b77f;animation:fade 3.2s ease both}
 .congrats{font-size:clamp(26px,7vw,70px);color:#d7b77f;font-weight:600;animation:slide 1s both}
