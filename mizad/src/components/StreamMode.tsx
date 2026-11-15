@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fmt } from '@/lib/money'
 
 const MOTIV: Record<string, string[]> = {
-  ar: ['مزايدة جديدة! من يتحدّاه؟', 'السعر يرتفع… الفرصة بين يديك', 'الأقوى يفوز، زايد الآن', 'لحظة حاسمة… من التالي؟', 'هذا المسبحة تستحق الأفضل'],
+  ar: ['مزايدة جديدة! من يتحدّاه؟', 'السعر يرتفع… الفرصة بين يديك', 'الأقوى يفوز، زايد الآن', 'لحظة حاسمة… من التالي؟', 'قطعة تستحق أفضل مزايدة'],
   en: ['A new bid! Who will challenge it?', 'The price is rising… your chance is now', 'Boldest bid wins. Bid now', 'A decisive moment… who is next?', 'A piece worth the best bid'],
 }
 
@@ -16,7 +16,7 @@ function Avatar({ url, name, size }: { url?: string; name?: string; size: string
   )
 }
 
-export default function StreamMode({ items, bidders, vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
+export default function StreamMode({ items, bidders, sup = [], vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
   const item = useMemo(() => {
     const live = items.find((i: any) => i.status === 'live'); if (live) return live
     const paused = items.find((i: any) => i.status === 'paused'); if (paused) return paused
@@ -27,6 +27,10 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, avatar
   const sold = item?.status === 'sold'
   const hasLeader = !!item?.leader_bidder_id && !hidden
   const target = hasLeader ? item.current_price_fils : 0
+  // Support given to the current leader on this product (newest first): shown as a floating card under the leader.
+  const leaderSup = useMemo(() => !item || hidden ? [] : sup.filter((s: any) => s.item_id === item.id && s.beneficiary_id === item.leader_bidder_id && ['authorized', 'captured'].includes(s.status))
+    .sort((a: any, b: any) => +new Date(b.created_at || 0) - +new Date(a.created_at || 0)), [sup, item?.id, item?.leader_bidder_id, hidden])
+  const lastSup = leaderSup[0]
   const sig = item ? `${item.id}:${item.leader_bidder_id}:${item.current_price_fils}:${item.bid_count}` : 'none'
 
   const [disp, setDisp] = useState(target), [flash, setFlash] = useState(0), [line, setLine] = useState(0)
@@ -72,6 +76,12 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, avatar
             <div className="congrats">{t('stream_congrats')}</div>
             <div className="winner" key={'s' + sig}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div>
             <div className="amount sold">{fmt(item.current_price_fils, lang)}</div>
+            {lastSup && <div className="supcard" key={'sc' + lastSup.id}><div className="supin">
+              <Avatar url={avatarOf(lastSup.supporter_id)} name={lastSup.supporter_name} size="clamp(44px,8vw,64px)" />
+              <div className="suptxt"><div className="suplbl">{t('stream_support_new')}</div>
+                <div className="supline"><span className="supname">{lastSup.supporter_name}</span> {t('stream_supports')} {item.leader_name}</div>
+                {leaderSup.length > 1 && <div className="supmore">+{leaderSup.length - 1} {t('stream_more_sup')}</div>}</div>
+              <span className="supamt" dir="ltr">+{fmt(lastSup.amount_fils, lang)}</span></div></div>}
           </>) : (<>
             <div className="label">{t('stream_highest')}</div>
             <div className="amountwrap">
@@ -80,7 +90,13 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, avatar
             </div>
             <div className="rule" />
             <div className="label">{t('stream_leader')}</div>
-            {hasLeader ? <div className="winner" key={'w' + item.leader_bidder_id + ':' + flash}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div> : <div className="winner dim">{t('no_bids')}</div>}
+            {hasLeader ? <div className="winner" key={'w' + item.leader_bidder_id + ':' + flash}><span className="fl"><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /></span><span className="fl fl2">{item.leader_name}</span></div> : <div className="winner dim">{t('no_bids')}</div>}
+            {lastSup && <div className="supcard" key={'sc' + lastSup.id}><div className="supin">
+              <Avatar url={avatarOf(lastSup.supporter_id)} name={lastSup.supporter_name} size="clamp(44px,8vw,64px)" />
+              <div className="suptxt"><div className="suplbl">{t('stream_support_new')}</div>
+                <div className="supline"><span className="supname">{lastSup.supporter_name}</span> {t('stream_supports')} {item.leader_name}</div>
+                {leaderSup.length > 1 && <div className="supmore">+{leaderSup.length - 1} {t('stream_more_sup')}</div>}</div>
+              <span className="supamt" dir="ltr">+{fmt(lastSup.amount_fils, lang)}</span></div></div>}
             {flash > 0 && <div className="motiv" key={'m' + flash}>{MOTIV[lang][line]}</div>}
           </>)}
         </>)}
@@ -121,6 +137,18 @@ const CSS = `
 .reqname .av{font-size:15px}
 .av b{color:#d7b77f;font-weight:600}
 .winner{display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,28px);margin-top:8px;font-size:clamp(30px,8.5vw,96px);font-weight:600;color:#fff;animation:slide .9s cubic-bezier(.2,.9,.2,1) both;text-shadow:0 0 40px #a77b3c55}
+.fl{display:inline-flex;animation:float 3s ease-in-out infinite}.fl2{animation-delay:-.4s}
+.supcard{width:min(560px,100%);margin:clamp(16px,3vh,30px) auto 0;animation:slide .9s cubic-bezier(.2,.9,.2,1) both}
+.supin{display:flex;align-items:center;gap:clamp(10px,2vw,16px);padding:clamp(10px,2vw,16px) clamp(12px,2.4vw,20px);border:1px solid #d7b77f;border-radius:20px;background:linear-gradient(135deg,#2a2112,#16120b);text-align:start;animation:floats 3.4s ease-in-out infinite,supglow 3.4s ease-in-out infinite;animation-delay:-1s}
+.suptxt{flex:1;min-width:0}
+.suplbl{font-size:clamp(11px,1.6vw,14px);letter-spacing:2px;color:#d7b77f}
+.supline{font-size:clamp(16px,3.2vw,26px);font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.supname{display:inline-block;color:#f6e3b8;animation:floats 2.6s ease-in-out infinite;animation-delay:-.8s}
+.supmore{font-size:clamp(11px,1.6vw,14px);color:#8f8a7e;margin-top:2px}
+.supamt{flex-shrink:0;background:#d7b77f;color:#14110b;font-weight:700;font-size:clamp(16px,3.2vw,26px);border-radius:12px;padding:6px 12px;white-space:nowrap}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes floats{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes supglow{0%,100%{box-shadow:0 0 18px #a77b3c33}50%{box-shadow:0 0 38px #d7b77f77}}
 .winner.dim{color:#5c584f;font-size:clamp(20px,4vw,40px);animation:none}
 .motiv{margin-top:clamp(14px,3vh,30px);font-size:clamp(14px,2.6vw,26px);color:#d7b77f;animation:fade 3.2s ease both}
 .congrats{font-size:clamp(26px,7vw,70px);color:#d7b77f;font-weight:600;animation:slide 1s both}

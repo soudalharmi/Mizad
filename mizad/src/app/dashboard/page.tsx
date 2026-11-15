@@ -382,7 +382,7 @@ export default function Dash() {
           {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
             : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}</div>
       </div>}
-      {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
+      {streaming && <StreamMode items={items} bidders={bidders} sup={sup} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
       <div style={{ height: 96 }} />
       <nav className="bottomnav" aria-label="tabs">{['auction', 'products', 'bidders', 'sales'].map(k => <button key={k} className={'bn-item' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
