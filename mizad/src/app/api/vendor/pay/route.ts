@@ -4,50 +4,70 @@ import { createIntent } from '@/lib/ziina'
 
 // kind: 'activation' (one time) | 'fees' (pay all service fees due) | 'invoice' (one specific invoice).
 // Money is only confirmed by asking Ziina (return page, webhook or sync), never by this route.
-export async function POST(req: Request) {
-  const u = await currentUser()
-  if (!u) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 401 })
-  const { kind, invoiceId } = await req.json()
-  const db = admin()
-  const { data: v } = await db.from('vendors').select('*').eq('owner_id', u.id).maybeSingle()
-  if (!v) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 })
-  const site = process.env.NEXT_PUBLIC_SITE_URL
-  let amount = 0, name = '', invoice: string | null = null, k: 'activation' | 'invoice' = 'invoice'
-  if (kind === 'activation') {
-    if (v.status !== 'pending_activation') return NextResponse.json({ error: 'ALREADY_ACTIVE' }, { status: 400 })
-    const { data: s } = await db.from('platform_settings').select('activation_fee_fils').single()
-    amount = s!.activation_fee_fils; name = 'MIZAD account activation'; k = 'activation'
-    if (amount === 0) { await db.rpc('activate_vendor', { p_vendor: v.id, p_amount: 0, p_ref: 'free-' + v.id }); return NextResponse.json({ url: site + '/dashboard' }) }
-  } else if (kind === 'invoice' || kind === 'fees') {
-    if (kind === 'fees') await db.rpc('generate_invoice', { p_vendor: v.id }) // bundle any unbilled fees into an invoice
-    if (kind === 'fees') { // merge every open invoice into the oldest one so a single payment settles everything
-      const { data: open } = await db.from('invoices').select('id,total_fils').eq('vendor_id', v.id).eq('status', 'open').order('created_at')
-      if (open && open.length > 1) {
-        const keep = open[0].id, rest = open.slice(1).map((x: any) => x.id)
-        await db.from('item_service_fees').update({ invoice_id: keep }).in('invoice_id', rest)
-        await db.from('invoices').update({ total_fils: open.reduce((n: number, x: any) => n + Number(x.total_fils), 0) }).eq('id', keep)
-        await db.from('invoices').delete().in('id', rest)
-      }
-    }
-    const q = db.from('invoices').select('*').eq('vendor_id', v.id).eq('status', 'open')
-    const { data: inv } = kind === 'invoice' ? await q.eq('id', invoiceId).maybeSingle() : await q.order('created_at').limit(1).maybeSingle()
-    if (!inv) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
-    amount = inv.total_fils; name = 'MIZAD service fees'; invoice = inv.id
-  } else return NextResponse.json({ error: 'GENERIC' }, { status: 400 })
-  if (amount < 200) return NextResponse.json({ error: 'GENERIC' }, { status: 400 }) // Ziina minimum is AED 2
+// Every failure returns a code plus a short detail so the host can see exactly which step failed.
+const fail = (error: string, detail: string, status = 400) => NextResponse.json({ error, detail }, { status })
 
-  const { data: row, error } = await db.from('ziina_intents').insert({ vendor_id: v.id, kind: k, invoice_id: invoice, amount_fils: amount }).select('ref').single()
-  if (error || !row) return NextResponse.json({ error: 'GENERIC' }, { status: 500 })
+export async function POST(req: Request) {
   try {
-    const it = await createIntent({
-      amount, message: name,
-      success_url: `${site}/api/ziina/return?ref=${row.ref}`, cancel_url: `${site}/dashboard`, failure_url: `${site}/dashboard`,
-    })
-    await db.from('ziina_intents').update({ ziina_id: it.id }).eq('ref', row.ref)
-    return NextResponse.json({ url: it.redirect_url })
-  } catch (e) {
-    console.error('ziina create failed', e)
-    await db.from('ziina_intents').update({ status: 'failed' }).eq('ref', row.ref)
-    return NextResponse.json({ error: 'PAY_UNAVAILABLE' }, { status: 502 })
+    const u = await currentUser()
+    if (!u) return fail('FORBIDDEN', 'not signed in', 401)
+    const { kind, invoiceId } = await req.json()
+    const db = admin()
+    const { data: v, error: ve } = await db.from('vendors').select('*').eq('owner_id', u.id).maybeSingle()
+    if (ve) return fail('GENERIC', 'vendors: ' + ve.message, 500)
+    if (!v) return fail('FORBIDDEN', 'no host page for this account', 403)
+    if (!process.env.ZIINA_API_TOKEN) return fail('PAY_UNAVAILABLE', 'ZIINA_API_TOKEN is not set in Netlify', 500)
+    const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin
+    let amount = 0, name = '', invoice: string | null = null, k: 'activation' | 'invoice' = 'invoice'
+
+    if (kind === 'activation') {
+      if (v.status !== 'pending_activation') return fail('ALREADY_ACTIVE', 'already active')
+      const { data: s } = await db.from('platform_settings').select('activation_fee_fils').single()
+      amount = s!.activation_fee_fils; name = 'MIZAD account activation'; k = 'activation'
+      if (amount === 0) { await db.rpc('activate_vendor', { p_vendor: v.id, p_amount: 0, p_ref: 'free-' + v.id }); return NextResponse.json({ url: site + '/dashboard' }) }
+    } else if (kind === 'invoice' || kind === 'fees') {
+      if (kind === 'fees') {
+        const { error: ge } = await db.rpc('generate_invoice', { p_vendor: v.id }) // bundle unbilled fees into an invoice
+        if (ge) return fail('GENERIC', 'generate_invoice: ' + ge.message, 500)
+        // merge every open invoice into the oldest one so a single payment settles everything
+        const { data: open, error: oe } = await db.from('invoices').select('id,total_fils').eq('vendor_id', v.id).eq('status', 'open').order('created_at')
+        if (oe) return fail('GENERIC', 'invoices: ' + oe.message, 500)
+        if (open && open.length > 1) {
+          const keep = open[0].id, rest = open.slice(1).map((x: any) => x.id)
+          const m1 = await db.from('item_service_fees').update({ invoice_id: keep }).in('invoice_id', rest)
+          if (m1.error) return fail('GENERIC', 'merge fees: ' + m1.error.message, 500)
+          await db.from('ziina_intents').update({ invoice_id: keep }).in('invoice_id', rest) // old unpaid attempts point to the kept invoice
+          const { data: sum } = await db.from('item_service_fees').select('amount_fils').eq('invoice_id', keep)
+          const total = (sum || []).reduce((n: number, x: any) => n + Number(x.amount_fils), 0)
+          const m2 = await db.from('invoices').update({ total_fils: total }).eq('id', keep)
+          if (m2.error) return fail('GENERIC', 'merge total: ' + m2.error.message, 500)
+          const m3 = await db.from('invoices').delete().in('id', rest)
+          if (m3.error) return fail('GENERIC', 'merge delete: ' + m3.error.message, 500)
+        }
+      }
+      const q = db.from('invoices').select('*').eq('vendor_id', v.id).eq('status', 'open')
+      const { data: inv } = kind === 'invoice' ? await q.eq('id', invoiceId).maybeSingle() : await q.order('created_at').limit(1).maybeSingle()
+      if (!inv) return fail('NOTHING_DUE', 'no open invoice', 404)
+      amount = Number(inv.total_fils); name = 'MIZAD service fees'; invoice = inv.id
+    } else return fail('GENERIC', 'unknown kind')
+    if (amount < 200) return fail('PAY_MIN', 'amount below AED 2: ' + amount)
+
+    const { data: row, error } = await db.from('ziina_intents').insert({ vendor_id: v.id, kind: k, invoice_id: invoice, amount_fils: amount }).select('ref').single()
+    if (error || !row) return fail('GENERIC', 'ziina_intents: ' + (error?.message || 'no row'), 500)
+    try {
+      const it = await createIntent({
+        amount, message: name,
+        success_url: `${site}/api/ziina/return?ref=${row.ref}`, cancel_url: `${site}/dashboard`, failure_url: `${site}/dashboard`,
+      })
+      await db.from('ziina_intents').update({ ziina_id: it.id }).eq('ref', row.ref)
+      return NextResponse.json({ url: it.redirect_url })
+    } catch (e: any) {
+      console.error('ziina create failed', e)
+      await db.from('ziina_intents').update({ status: 'failed' }).eq('ref', row.ref)
+      return fail('PAY_UNAVAILABLE', String(e?.message || e), 502)
+    }
+  } catch (e: any) {
+    console.error('pay route crashed', e)
+    return fail('GENERIC', 'crash: ' + String(e?.message || e), 500)
   }
 }
