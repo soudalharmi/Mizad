@@ -54,3 +54,44 @@ a{color:var(--gold)}
 .bn-item.active{color:#20211f;font-weight:700}
 .bn-dot{width:18px;height:3px;border-radius:2px;background:#a77b3c;display:block}
 .bn-badge{position:absolute;top:-2px;inset-inline-end:calc(50% - 30px);min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:#d93025;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* My Sales manager */
+.sm-nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.sm-nav button{background:#eae7e0;color:#55574f;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap}
+.sm-nav button.on{background:#252621;color:#fff}
+.sm-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.sm-tile{background:#f8f7f4;border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.sm-tile span{display:block;font-size:12px;color:var(--muted)}.sm-tile b{font-size:18px;font-variant-numeric:tabular-nums;display:block}
+.sm-tile.hl{background:#f7f0e4;border-color:transparent}.sm-tile.hl b{color:#7a5a2b}
+.sm-g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.sm-seg{display:flex;gap:6px;flex-wrap:wrap}
+.sm-seg button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font-size:12px}.sm-seg button.on{background:#252621;color:#fff;border-color:#252621}
+.sm-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px}
+.sm-filters label{margin:8px 0 3px}
+.sm-thumb{border-radius:9px;background:linear-gradient(145deg,#e9e1d2,#c5b18d);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#5c4520;flex-shrink:0;overflow:hidden}
+.sm-thumb img{width:100%;height:100%;object-fit:cover}
+.sm-tbox{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+.sm-table{border-collapse:collapse;width:100%;font-size:12.5px}
+.sm-table th,.sm-table td{padding:9px 10px;text-align:start;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+.sm-table th{font-size:11px;color:var(--muted);background:#f8f7f4}
+.sm-table tbody tr{cursor:pointer}.sm-table tbody tr:hover{background:#f7f0e4}
+.sm-plist{display:none;flex-direction:column;gap:10px}
+.sm-pcard{display:block;width:100%;text-align:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+.sm-rowbtn{width:100%;background:none;text-align:start;align-items:center;gap:8px}
+.sm-steps{display:flex;gap:6px;overflow-x:auto}
+.sm-step{flex:1;min-width:92px;text-align:center;font-size:11px;padding:8px 6px;border-radius:10px;background:#f0eee8;color:#777970}
+.sm-step.done{background:#e8f3ec;color:var(--green)}.sm-step.now{background:var(--gold);color:#fff;font-weight:700}
+.sm-next{background:#f7f0e4;border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.sm-next b{color:#7a5a2b}
+.sm-log{padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}.sm-log:last-child{border:0}
+.sm-modal{position:fixed;inset:0;background:#20211f99;z-index:70;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px 40px}
+.sm-sheet{background:#fff;border-radius:18px;padding:18px;width:min(520px,100%)}.sm-sheet.wide{width:min(760px,100%)}
+.sm-paper{background:#fff;color:#1b1b1a;border:1px solid #d9d5cb;border-radius:6px;padding:24px 22px;font-size:12.5px}
+.sm-paper .pm{color:#5f6058}
+.sm-ptop{display:flex;justify-content:space-between;gap:12px;border-bottom:3px solid #a77b3c;padding-bottom:12px;margin-bottom:14px;flex-wrap:wrap}
+.sm-ptable{width:100%;border-collapse:collapse;font-size:12px}
+.sm-ptable th{text-align:start;color:#5f6058;border-bottom:2px solid #1b1b1a;padding:6px}
+.sm-ptable td{padding:7px 6px;border-bottom:1px solid #d9d5cb;vertical-align:top}
+.sm-ptable tr.tot td{font-weight:700;border-top:2px solid #1b1b1a;border-bottom:0}
+.sm-docbtns{display:flex;gap:8px;margin-top:12px}
+@media(max-width:760px){.sm-tbox{display:none}.sm-plist{display:flex}}
+@media print{body *{visibility:hidden}.sm-paper,.sm-paper *{visibility:visible}.sm-paper{position:absolute;inset:0;border:0}}

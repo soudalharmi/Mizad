@@ -10,6 +10,7 @@ import { normalizePhone } from '@/lib/phone'
 import { CURRENCIES, currencyLabel } from '@/lib/currency'
 import StreamMode from '@/components/StreamMode'
 import HostProfile from '@/components/HostProfile'
+import SalesManager from '@/components/SalesManager'
 import Link from 'next/link'
 
 const genCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint8Array(5)); return 'MZ-' + Array.from(r, x => A[x % A.length]).join('') }
@@ -32,7 +33,7 @@ export default function Dash() {
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [vphone, setVphone] = useState(''), [showInv, setShowInv] = useState(false)
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({}), [rs, setRs] = useState<'sold' | 'returned'>('sold'), [openRet, setOpenRet] = useState<Record<string, boolean>>({})
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({}), [smView, setSmView] = useState('home'), [smSig, setSmSig] = useState(0)
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 9000) }
 
@@ -77,7 +78,7 @@ export default function Dash() {
     return () => clearInterval(i)
   }, [v?.id, load])
   useEffect(() => {
-    if (tab !== 'sales' || salesView !== 'sessions' || !v) return
+    if (tab !== 'sales' || smView !== 'sessions' || !v) return
     let off = false
     const run = async () => {
       const [b, o] = await Promise.all([db.from('bids').select('item_id,bidder_id').eq('vendor_id', v.id).limit(10000), db.from('offers').select('item_id,bidder_id').eq('vendor_id', v.id).limit(10000)])
@@ -86,7 +87,7 @@ export default function Dash() {
       if (!off) setParts(Object.fromEntries(Object.entries(m).map(([key, x]) => [key, x.size])))
     }
     run(); const i = setInterval(run, 8000); return () => { off = true; clearInterval(i) }
-  }, [tab, salesView, v?.id])
+  }, [tab, smView, v?.id])
   useEffect(() => { if (!v?.id) return; fetch('/api/vendor/pay-sync', { method: 'POST' }).then(r => r.json()).then(j => { if (j?.changed) load() }).catch(() => {}) }, [v?.id])
   const pendingCount = bidders.filter(b => b.status === 'pending').length
   const offerCount = offers.filter(o => o.status === 'pending' && items.some(i => i.id === o.item_id && !i.revealed && (i.status === 'live' || i.status === 'paused'))).length
@@ -124,76 +125,13 @@ export default function Dash() {
     }
     setForm({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }); setFile(null); setCode(genCode()); load()
   }
-  const MARKS = ['pending', 'winner_paid', 'owner_paid', 'awaiting_delivery', 'completed']
-  const toggleMark = async (itemId: string, m: string) => {
-    const cur: string[] = priv[itemId]?.marks || ['pending']
-    let next = cur.includes(m) ? cur.filter(x => x !== m) : [...cur.filter(x => !(m === 'pending' || x === 'pending')), m]
-    if (m === 'pending' && !cur.includes('pending')) next = ['pending']
-    if (next.length === 0) next = ['pending']
-    setPriv(p => ({ ...p, [itemId]: { ...(p[itemId] || {}), item_id: itemId, marks: next } }))
-    const { error } = priv[itemId] ? await db.from('item_private').update({ marks: next }).eq('item_id', itemId) : await db.from('item_private').insert({ item_id: itemId, vendor_id: v.id, marks: next })
-    if (error) { say(error.message); load() }
-  }
   const savePriv = async (itemId: string, patch: any) => {
     const { error } = priv[itemId] ? await db.from('item_private').update(patch).eq('item_id', itemId) : await db.from('item_private').insert({ item_id: itemId, vendor_id: v.id, ...patch })
     error ? say(error.message) : load()
   }
   const digits = (x?: string) => String(x || '').replace(/\D/g, '')
   const phoneHit = (phone: string | undefined, q: string) => { const d = digits(q); return d.length > 0 && digits(phone).includes(d) }
-  const renderSale = (i: any) => {
-    const w = bidders.find(b => b.id === i.leader_bidder_id), p = priv[i.id], marks: string[] = p?.marks || ['pending'], ed = editP?.id === i.id
-    return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
-      <div className="row"><div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '—'}</b>}</div>
-        <div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {p?.category && <span className="pill">{p.category}</span>}</div></div>
-        <b>{fmt(i.current_price_fils, lang)}</b></div>
-      <div className="kv"><span>{t('buyer')}</span><b>{i.leader_name} <span dir="ltr" className="muted">{ph(w?.phone)}</span></b></div>
-      {sup.filter(s => s.item_id === i.id && s.beneficiary_id === i.leader_bidder_id && ['authorized', 'captured'].includes(s.status)).map(s => {
-        const sb_ = bidders.find(b => b.id === s.supporter_id)
-        return <div className="kv" key={s.id}><span>{t('supported_by')}</span><b>{s.supporter_name} <span dir="ltr" className="muted">{ph(sb_?.phone)}</span> · {fmt(s.amount_fils, lang)}</b></div>
-      })}
-      <div className="kv"><span>{t('seller')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
-      {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
-      <div className="kv"><span>{t('date')}</span><b>{i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</b></div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>{MARKS.map(m => <button key={m} className={'btn ' + (marks.includes(m) ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => toggleMark(i.id, m)}>{marks.includes(m) ? '✓ ' : ''}{t('mark_' + m)}</button>)}</div>
-      <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
-      {ed && <div className="notice" style={{ marginTop: 8 }}>
-        <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
-        <label>{t('owner_phone')}</label><PhoneInput value={editP.ophone} onChange={(x: string) => setEditP({ ...editP, ophone: x })} />
-        <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
-        <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
-        <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
-    </div>)
-  }
-  const renderReturn = (i: any) => {
-    const p = priv[i.id], ed = editP?.id === i.id
-    return (<div key={i.id} className="card" style={{ boxShadow: 'none', padding: 12 }}>
-      <div className="row"><div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '—'}</b>}</div>
-        <div><b>{i.name}</b> {i.ref_code && <span className="pill gold" dir="ltr">{i.ref_code}</span>} {p?.category && <span className="pill">{p.category}</span>}</div></div>
-        <span className="pill">{t('returned_one')}</span></div>
-      <div className="kv"><span>{t('seller')}</span><b>{p?.owner_name || '—'} <span dir="ltr" className="muted">{ph(p?.owner_phone)}</span></b></div>
-      {p?.asked_price_fils != null && <div className="kv"><span>{t('asked_price')}</span><b>{fmt(p.asked_price_fils, lang)}</b></div>}
-      {i.auction_type !== 'custom' && <div className="kv"><span>{t('start_price')}</span><b>{fmt(i.start_price_fils, lang)}</b></div>}
-      <div className="kv"><span>{t('date')}</span><b>{i.closed_at ? new Date(i.closed_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</b></div>
-      <button className="btn light" style={{ marginTop: 10, padding: '6px 10px', fontSize: 13 }} onClick={() => setEditP(ed ? null : { id: i.id, oname: p?.owner_name || '', ophone: p?.owner_phone || '', asked: p?.asked_price_fils != null ? String(p.asked_price_fils / 100) : '', cat: p?.category || '' })}>{t('sale_edit')}</button>
-      {ed && <div className="notice" style={{ marginTop: 8 }}>
-        <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
-        <label>{t('owner_phone')}</label><PhoneInput value={editP.ophone} onChange={(x: string) => setEditP({ ...editP, ophone: x })} />
-        <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
-        <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
-        <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
-    </div>)
-  }
   const ph = (p?: string) => p ? (String(p).startsWith('+') ? p : '+' + p) : ''
-  const statement = (i: any) => {
-    const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || 'Session minimum fee').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
-    const blob = new Blob([`item,fee_AED\n${rows.join('\n')}\ntotal,${(i.total_fils / 100).toFixed(2)}`], { type: 'text/csv' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mazad-boss-statement-${i.id.slice(0, 8)}.csv`; a.click()
-  }
-
   if (!ready) return <main className="wrap"><div className="empty">…</div></main>
   if (!v) return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('create_page')}</h2>
     <label>{t('store_name')}</label><input value={vname} onChange={e => setVname(e.target.value)} />
@@ -214,6 +152,20 @@ export default function Dash() {
   setCurrency(v.currency)
   const link = typeof location !== 'undefined' ? `${location.origin}/${v.slug}/live` : ''
   const pending = bidders.filter(b => b.status === 'pending'), approved = bidders.filter(b => b.status === 'approved')
+  const sessionsView = <div className="card"><h3>{t('sessions_title')}</h3>
+    {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).length === 0 ? <div className="empty">{t('no_sessions')}</div> : <div className="bidlist">
+      {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).map(x => {
+        const its = items.filter(i => i.auction_id === x.id), soldI = its.filter(i => i.status === 'sold'), ret = its.filter(i => i.status === 'unsold')
+        const total = soldI.reduce((sum, i) => sum + i.current_price_fils, 0)
+        return (<div className="card" key={x.id} style={{ boxShadow: 'none', background: '#faf9f6' }}>
+          <div className="row"><div><b>{x.title}</b><div className="muted">{new Date(x.started_at || x.created_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB')}</div></div>
+            <span className={'pill ' + (x.status === 'live' ? 'green' : '')}>{x.status === 'live' ? t('live_now') : t('ended')}</span></div>
+          <div className="stats" style={{ marginTop: 12, marginBottom: 0, gridTemplateColumns: 'repeat(2,1fr)' }}>
+            <div className="stat"><span className="muted">{t('participants')}</span><b>{parts[x.id] || 0}</b></div>
+            <div className="stat"><span className="muted">{t('total_sales')}</span><b>{fmt(total, lang)}</b></div>
+            <div className="stat"><span className="muted">{t('products_sold')}</span><b>{soldI.length}</b></div>
+            <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div></div>)
+      })}</div>}</div>
   const stPill = (s: string) => s === 'live' ? 'green' : s === 'paused' ? 'gold' : ''
 
   return (
@@ -303,22 +255,8 @@ export default function Dash() {
 
       {tab === 'products' && <div className="grid">
         <div className="card"><h3>{t('add_item')}</h3>
-          <div className="row" style={{ gap: 8 }}><button className={'btn ' + (atype === 'standard' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setAtype('standard')}>{t('type_standard')}</button><button className={'btn ' + (atype === 'custom' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setAtype('custom')}>{t('type_custom')}</button></div>
-          {atype === 'custom' && <div className="notice" style={{ marginTop: 10 }}>{t('custom_hint')}</div>}
-          <label>{t('name')}</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <label>{t('desc')}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <label>{t('start_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
-          <label>{t('increment')} ({v.currency || 'AED'}, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
-          <div className="notice" style={{ marginTop: 14 }}><b>{t('owner_section')}</b> <small className="muted">({t('host_only')} · {t('optional')})</small>
-            <label>{t('owner_name')}</label><input value={form.oname} onChange={e => setForm({ ...form, oname: e.target.value })} />
-            <label>{t('owner_phone')}</label><PhoneInput value={form.ophone} onChange={(x: string) => setForm({ ...form, ophone: x })} />
-            <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} />
-            <label>{t('category')}</label><input list="cats" value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} /><datalist id="cats">{Array.from(new Set(Object.values(priv).map((x: any) => x.category).filter(Boolean))).map((c: any) => <option key={c} value={c} />)}</datalist></div>
-          <label>{t('image')}</label>
-          <div className="row" style={{ gap: 8 }}><button className={'btn ' + (mode === 'photo' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('photo')}>{t('photo_mode')}</button><button className={'btn ' + (mode === 'code' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('code')}>{t('code_mode')}</button></div>
-          {mode === 'photo' ? <input type="file" accept="image/*" style={{ marginTop: 10 }} onChange={e => setFile(e.target.files?.[0] || null)} />
-            : <div className="notice" style={{ marginTop: 10 }}><div className="row"><b dir="ltr" style={{ fontSize: 22, letterSpacing: 2 }}>{code}</b><button className="btn light" onClick={() => setCode(genCode())}>{t('regenerate')}</button></div><div className="muted" style={{ marginTop: 6 }}>{t('code_hint')}</div></div>}
-          <button className="btn gold full" disabled={!form.name || !form.start || !form.inc} onClick={addItem}>{t('save')}</button></div>
+          <p className="muted">{t('receive_hint')}</p>
+          <button className="btn gold full" onClick={() => { setSmView('receive'); setTab('sales'); window.scrollTo(0, 0) }}>+ {t('receive_btn')}</button></div>
         <div className="card">{(() => {
           const q = items.filter(i => i.status === 'queued' || i.status === 'paused')
           const grpOf = (i: any) => String(priv[i.id]?.grp || '')
@@ -343,52 +281,16 @@ export default function Dash() {
               {Object.entries(COLORS).map(([k, c]) => <button key={k} aria-label={k} onClick={() => setCf(cf === k ? 'all' : k)} style={{ width: 26, height: 26, borderRadius: '50%', background: c, padding: 0, border: cf === k ? '3px solid #20211f' : '2px solid #fff', boxShadow: '0 0 0 1px #d8d4ca' }} />)}</div>
             {groups.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>{['all', ...groups, '__none'].map(g => <button key={g} className={'btn ' + (gf === g ? 'gold' : 'light')} style={{ padding: '4px 10px', fontSize: 13 }} onClick={() => setGf(g)}>{g === 'all' ? t('all') : g === '__none' ? t('ungrouped') : g}</button>)}</div>}
             {q.length === 0 ? <div className="empty">{t('no_queued')}</div> : shown.length === 0 ? <div className="empty">{t('no_results')}</div> :
-              sections.map(([g, list]) => <div key={g || '__none'} style={{ marginBottom: 12 }}>
-                {(groups.length > 0) && <div className="muted" style={{ fontWeight: 700, margin: '4px 2px 6px' }}>{g ? '📁 ' + g : t('ungrouped')} ({list.length})</div>}
-                <div className="bidlist">{list.map(row)}</div></div>)}</>)
+              ['custom', 'standard'].map(ty => { const part = sections.map(([g, list]) => [g, list.filter(i => (i.auction_type === 'custom') === (ty === 'custom'))] as [string, any[]]).filter(([, l]) => l.length > 0); const n = part.reduce((c, [, l]) => c + l.length, 0)
+                return n === 0 ? null : <div key={ty} style={{ marginBottom: 18 }}>
+                  <div className="row" style={{ background: '#20211f', color: '#fff', borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}><b>{ty === 'custom' ? t('type_custom') : t('type_standard')}</b><span className="pill gold">{n}</span></div>
+                  {part.map(([g, list]) => <div key={g || '__none'} style={{ marginBottom: 12 }}>
+                    {(groups.length > 0) && <div className="muted" style={{ fontWeight: 700, margin: '4px 2px 6px' }}>{g ? '📁 ' + g : t('ungrouped')} ({list.length})</div>}
+                    <div className="bidlist">{list.map(row)}</div></div>)}</div> })}</>)
         })()}</div>
       </div>}
 
-      {tab === 'sales' && <div className="section" style={{ display: 'flex', gap: 8 }}>
-        <button className={'btn ' + (salesView === 'all' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setSalesView('all')}>{t('sales_all')}</button>
-        <button className={'btn ' + (salesView === 'sessions' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setSalesView('sessions')}>{t('sales_sessions')}</button></div>}
-      {tab === 'sales' && salesView === 'all' && <div className="card"><h3>{t('tab_sales')}</h3>
-        {(() => {
-          const q = sq.trim().toLowerCase()
-          const sold = items.filter(i => i.status === (rs === 'sold' ? 'sold' : 'unsold')).sort((a, b) => +new Date(b.closed_at || 0) - +new Date(a.closed_at || 0))
-          const list = sold.filter(i => {
-            const p = priv[i.id], w = bidders.find(b => b.id === i.leader_bidder_id), marks: string[] = p?.marks || ['pending']
-            if (rs === 'sold' && sf !== 'all' && !marks.includes(sf)) return false
-            if (!q) return true
-            return [i.name, i.ref_code, p?.owner_name, p?.category, i.leader_name, w?.name].some(x => String(x || '').toLowerCase().includes(q)) || phoneHit(p?.owner_phone, q) || phoneHit(w?.phone, q)
-          })
-          return (<>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button className={'btn ' + (rs === 'sold' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setRs('sold')}>{t('sold_tab')} ({items.filter(i => i.status === 'sold').length})</button>
-              <button className={'btn ' + (rs === 'returned' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setRs('returned')}>{t('returned')} ({items.filter(i => i.status === 'unsold').length})</button></div>
-            <input placeholder={t('search_products')} value={sq} onChange={e => setSq(e.target.value)} />
-            {rs === 'sold' && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>{['all', ...MARKS].map(m => <button key={m} className={'btn ' + (sf === m ? 'gold' : 'light')} style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setSf(m)}>{m === 'all' ? t('all') : t('mark_' + m)}</button>)}</div>}
-            {sold.length === 0 ? <div className="empty" style={{ marginTop: 10 }}>{rs === 'sold' ? t('no_history') : t('no_returned')}</div> : list.length === 0 ? <div className="empty">{t('no_results')}</div> : <div className="bidlist" style={{ marginTop: 10 }}>{list.map(i => rs === 'sold' ? renderSale(i) : renderReturn(i))}</div>}</>)
-        })()}</div>}
-
-      {tab === 'sales' && salesView === 'sessions' && <div className="card"><h3>{t('sessions_title')}</h3>
-        {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).length === 0 ? <div className="empty">{t('no_sessions')}</div> : <div className="bidlist">
-          {sessions.filter(x => x.status === 'live' || items.some(i => i.auction_id === x.id)).map(x => {
-            const its = items.filter(i => i.auction_id === x.id), soldI = its.filter(i => i.status === 'sold'), ret = its.filter(i => i.status === 'unsold')
-            const total = soldI.reduce((sum, i) => sum + i.current_price_fils, 0)
-            return (<div className="card" key={x.id} style={{ boxShadow: 'none', background: '#faf9f6' }}>
-              <div className="row"><div><b>{x.title}</b><div className="muted">{new Date(x.started_at || x.created_at).toLocaleString(lang === 'ar' ? 'ar-AE' : 'en-GB')}</div></div>
-                <span className={'pill ' + (x.status === 'live' ? 'green' : '')}>{x.status === 'live' ? t('live_now') : t('ended')}</span></div>
-              <div className="stats" style={{ marginTop: 12, marginBottom: 0, gridTemplateColumns: 'repeat(2,1fr)' }}>
-                <div className="stat"><span className="muted">{t('participants')}</span><b>{parts[x.id] || 0}</b></div>
-                <div className="stat"><span className="muted">{t('total_sales')}</span><b>{fmt(total, lang)}</b></div>
-                <div className="stat"><span className="muted">{t('products_sold')}</span><b>{soldI.length}</b></div>
-                <div className="stat"><span className="muted">{t('returned')}</span><b>{ret.length}</b></div></div>
-              {soldI.length > 0 && <button className="btn light full" style={{ marginTop: 12 }} onClick={() => setOpenSess(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('sold_products')} ({soldI.length}) {openSess[x.id] ? '▲' : '▼'}</button>}
-              {openSess[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{soldI.map(i => renderSale(i))}</div>}
-              {ret.length > 0 && <button className="btn light full" style={{ marginTop: 8 }} onClick={() => setOpenRet(o => ({ ...o, [x.id]: !o[x.id] }))}>{t('returned_products')} ({ret.length}) {openRet[x.id] ? '▲' : '▼'}</button>}
-              {openRet[x.id] && <div className="bidlist" style={{ marginTop: 10 }}>{ret.map(i => renderReturn(i))}</div>}</div>)
-          })}</div>}</div>}
+      {tab === 'sales' && <SalesManager v={v} lang={lang} say={say} view={smView} setView={setSmView} sig={String(smSig)} onChanged={() => { setSmSig(x => x + 1); load() }} goProducts={() => { setTab('products'); window.scrollTo(0, 0) }} sessions={sessionsView} />}
 
       {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
       {tab === 'billing' && <div className="grid">
