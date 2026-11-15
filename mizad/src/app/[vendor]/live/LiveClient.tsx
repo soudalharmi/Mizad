@@ -24,7 +24,7 @@ function PayForm({ onDone, t }: any) {
 export default function Live({ slug }: { slug: string }) {
   const { t, lang } = useLang(); const db = sb()
   const [vendor, setVendor] = useState<any>(null), [item, setItem] = useState<any>(null), [bids, setBids] = useState<any[]>([])
-  const [user, setUser] = useState<any>(null), [me, setMe] = useState<any>(null), [amount, setAmount] = useState(0)
+  const [user, setUser] = useState<any>(null), [me, setMe] = useState<any>(null), [amount, setAmount] = useState(0), [cands, setCands] = useState<any[]>([]), [ben, setBen] = useState<any>(null)
   const [modal, setModal] = useState<'' | 'choose' | 'support' | 'pay'>(''), [secret, setSecret] = useState(''), [msg, setMsg] = useState(''), [busy, setBusy] = useState(false)
   const [name, setName] = useState(''), [prof, setProf] = useState<any>(null), [showProfile, setShowProfile] = useState(false), [showHost, setShowHost] = useState(false)
   const [offerAmt, setOfferAmt] = useState(''), [myOffer, setMyOffer] = useState<any>(null)
@@ -73,10 +73,18 @@ export default function Live({ slug }: { slug: string }) {
     setModal(''); setMsg(j.error ? err(j.error) : t('bid_ok')); load()
   }
   const support = async () => {
-    setBusy(true); const j = await post('/api/support', { itemId: item.id, newPriceFils: amount, idem: key() }); setBusy(false)
+    setBusy(true); const j = await post('/api/support', { itemId: item.id, beneficiaryId: ben?.id, newPriceFils: amount, idem: key() }); setBusy(false)
     idem.current = ''; setModal('')
     if (j.error) return setMsg(err(j.error))
     setMsg(t('support_ok')); load()
+  }
+  // bidders on this product that can be supported: not the current leader and not me
+  const openSupport = async () => {
+    setBen(null); setModal('support')
+    const { data } = await db.from('bids').select('bidder_id,bidder_name').eq('item_id', item.id).limit(2000)
+    const seen: Record<string, any> = {}
+    for (const b of data || []) if (b.bidder_id !== item.leader_bidder_id && b.bidder_id !== me?.id && !seen[b.bidder_id]) seen[b.bidder_id] = { id: b.bidder_id, name: b.bidder_name }
+    setCands(Object.values(seen))
   }
   const sendOffer = async () => {
     setBusy(true); const j = await post('/api/offer', { itemId: item.id, amountFils: aedToFils(offerAmt), idem: crypto.randomUUID() }); setBusy(false)
@@ -119,7 +127,7 @@ export default function Live({ slug }: { slug: string }) {
               <input readOnly value={fmt(amount, lang)} />
               <button className="btn light" onClick={() => setAmount(a => a + item.increment_fils)}>+</button>
             </div>
-            <button className="btn gold full" onClick={() => setModal(canSupport ? 'choose' : 'support')} style={{ display: canSupport ? 'block' : 'none' }}>{t('bid_now')}</button>
+            <button className="btn gold full" onClick={() => setModal('choose')} style={{ display: canSupport ? 'block' : 'none' }}>{t('bid_now')}</button>
             {!canSupport && <button className="btn gold full" disabled={busy} onClick={bid}>{t('bid_now')}</button>}
           </>)}
         </>)}
@@ -143,16 +151,18 @@ export default function Live({ slug }: { slug: string }) {
           {modal === 'choose' && (<>
             <h3>{fmt(amount, lang)}</h3>
             <button className="btn gold full" disabled={busy} onClick={bid}>{t('bid_self')}</button>
-            <button className="btn full" onClick={() => setModal('support')}>{t('bid_support')}</button>
+            <button className="btn full" onClick={openSupport}>{t('bid_support')}</button>
             <button className="btn light full" onClick={() => setModal('')}>{t('cancel')}</button></>)}
           {modal === 'support' && (<>
             <h3>{t('bid_support')}</h3>
-            <div className="kv"><span>{t('beneficiary')}</span><b>{item.leader_name}</b></div>
+            <p style={{ margin: '4px 0 8px', fontWeight: 600 }}>{t('who_support')}</p>
+            {cands.length === 0 ? <p className="muted">{t('no_support_cands')}</p> : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>{cands.map(c => (
+              <button key={c.id} className={'btn ' + (ben?.id === c.id ? 'gold' : 'light')} onClick={() => setBen(c)}>{ben?.id === c.id ? '✓ ' : ''}{c.name}</button>))}</div>}
             <div className="kv"><span>{t('current_price')}</span><b>{fmt(item.current_price_fils, lang)}</b></div>
             <div className="kv"><span>{t('proposed_price')}</span><b>{fmt(amount, lang)}</b></div>
             <div className="kv"><span>{t('your_contrib')}</span><b>{fmt(contrib, lang)}</b></div>
             <p className="muted">{t('support_note')}</p>
-            <button className="btn gold full" disabled={busy || contrib <= 0} onClick={support}>{t('confirm_support')}</button>
+            <button className="btn gold full" disabled={busy || contrib <= 0 || !ben} onClick={support}>{t('confirm_support')}</button>
             <button className="btn light full" onClick={() => setModal('')}>{t('cancel')}</button></>)}
           {modal === 'pay' && stripeP && (<Elements stripe={stripeP} options={{ clientSecret: secret }}>
             <h3>{fmt(contrib, lang)}</h3>
