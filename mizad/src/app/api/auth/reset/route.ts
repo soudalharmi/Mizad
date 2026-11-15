@@ -3,7 +3,7 @@ import { admin } from '@/lib/supabase-server'
 import { allow } from '@/lib/rate'
 import { validDob } from '@/lib/dob'
 
-// Forgot password: bidder gives phone + date of birth, host gives email + date of birth, plus a new password.
+// Forgot password: bidder gives phone + date of birth; host gives email + phone + date of birth; plus a new password.
 // The database allows 5 wrong tries per account per hour (reset_verify), so dates of birth cannot be guessed.
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 export async function POST(req: Request) {
@@ -13,9 +13,9 @@ export async function POST(req: Request) {
   const kind = b.kind === 'host' ? 'host' : 'bidder', dob = String(b.dob || ''), password = String(b.password || '')
   const ident = kind === 'host' ? String(b.email || '') : String(b.phone || '')
   if (password.length < 8) return bad('PW_SHORT')
-  if (!validDob(dob) || !ident.trim()) return bad('RESET_FAIL')
+  if (!validDob(dob) || !ident.trim() || (kind === 'host' && !String(b.phone || '').trim())) return bad('RESET_FAIL')
   const db = admin()
-  const { data: uid, error } = await db.rpc('reset_verify', { p_kind: kind, p_ident: ident, p_dob: dob })
+  const { data: uid, error } = await db.rpc('reset_verify', { p_kind: kind, p_ident: ident, p_dob: dob, p_phone: kind === 'host' ? String(b.phone || '') : null })
   if (error || !uid) return bad(/RESET_LOCKED/.test(error?.message || '') ? 'RESET_LOCKED' : 'RESET_FAIL')
   const { error: ue } = await db.auth.admin.updateUserById(String(uid), { password })
   if (ue) return bad('GENERIC', 500)

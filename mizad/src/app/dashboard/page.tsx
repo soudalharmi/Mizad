@@ -184,7 +184,7 @@ export default function Dash() {
     <label>{t('slug')}</label><input dir="ltr" value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-auction" />
     <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={vphone} onChange={e => setVphone(e.target.value)} />
     <label>{t('currency')}</label><select value={vcur} onChange={e => setVcur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
-    <p className="muted">{t('currency_hint')}</p>
+    <div className="notice" style={{ marginTop: 8, fontSize: 13 }}>⚠ {t('currency_final')}</div>
     <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
   if (v.status === 'pending_activation') return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('activate_title')}</h2>
     <p className="muted">{t('activate_text')}</p><button className="btn gold full" onClick={() => pay('activation')}>{t('activate_btn')}</button></div></main>)

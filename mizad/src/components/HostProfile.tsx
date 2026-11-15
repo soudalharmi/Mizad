@@ -20,7 +20,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
   const save = async () => {
     setBusy(true)
     const clean = Object.fromEntries(Object.entries(soc).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v))
-    const { error } = await db.from('vendors').update({ name: name.trim(), bio: bio.trim() || null, socials: clean, logo_url: logo || null, currency: cur, phone: phone.trim() || null }).eq('id', vendor.id)
+    const { error } = await db.from('vendors').update({ name: name.trim(), bio: bio.trim() || null, socials: clean, logo_url: logo || null, phone: phone.trim() || null }).eq('id', vendor.id)
     setBusy(false); if (error) return setMsg(error.message.includes('CURRENCY_LOCKED') ? t('CURRENCY_LOCKED') : error.message)
     onClose()
   }
@@ -35,7 +35,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
         </div>
         <label>{t('store_name')}</label><input value={name} onChange={e => setName(e.target.value)} />
         <label>{t('host_phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
-        <label>{t('currency')}</label><select value={cur} onChange={e => setCur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
+        <label>{t('currency')}</label><input value={currencyLabel(CURRENCIES.find(c => c.code === cur) || CURRENCIES[0], lang)} disabled />
         <label>{t('bio')}</label><textarea maxLength={300} value={bio} onChange={e => setBio(e.target.value)} />
         <h4 style={{ marginBottom: 0 }}>{t('social_accounts')}</h4><div className="muted">{t('social_hint')}</div>
         {PLATFORMS.map(p => <div key={p.k}><label>{p.label}</label><input dir="ltr" value={soc[p.k] || ''} placeholder={p.k === 'whatsapp' ? '+9715…' : p.k === 'website' ? 'example.com' : '@username'} onChange={e => setSoc({ ...soc, [p.k]: e.target.value })} /></div>)}
