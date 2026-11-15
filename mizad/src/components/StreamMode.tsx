@@ -8,7 +8,15 @@ const MOTIV: Record<string, string[]> = {
 }
 
 // Full-screen black stage for the live stream. Shows names only (never phone numbers) and never host-only prices.
-export default function StreamMode({ items, bidders, vendorName, lang, t, onApprove, onReject, onExit }: any) {
+function Avatar({ url, name, size }: { url?: string; name?: string; size: string }) {
+  return (
+    <span className="av" style={{ width: size, height: size }}>
+      {url ? <img src={url} alt="" /> : <b>{(name || '?').trim().charAt(0).toUpperCase()}</b>}
+    </span>
+  )
+}
+
+export default function StreamMode({ items, bidders, vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
   const item = useMemo(() => {
     const live = items.find((i: any) => i.status === 'live'); if (live) return live
     const paused = items.find((i: any) => i.status === 'paused'); if (paused) return paused
@@ -61,8 +69,8 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, onAppr
           <div className="itemname">{item.name}{item.ref_code && <span className="code" dir="ltr">{item.ref_code}</span>}</div>
           {item.status === 'paused' && <div className="paused">{t('stream_paused')}</div>}
           {hidden ? <div className="custom">{t('stream_custom')}</div> : sold ? (<>
-            <div className="congrats">{t('stream_congrats')} 🎉</div>
-            <div className="winner" key={'s' + sig}>{item.leader_name}</div>
+            <div className="congrats">{t('stream_congrats')}</div>
+            <div className="winner" key={'s' + sig}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div>
             <div className="amount sold">{fmt(item.current_price_fils, lang)}</div>
           </>) : (<>
             <div className="label">{t('stream_highest')}</div>
@@ -72,7 +80,7 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, onAppr
             </div>
             <div className="rule" />
             <div className="label">{t('stream_leader')}</div>
-            {hasLeader ? <div className="winner" key={'w' + item.leader_bidder_id + ':' + flash}>{item.leader_name}</div> : <div className="winner dim">{t('no_bids')}</div>}
+            {hasLeader ? <div className="winner" key={'w' + item.leader_bidder_id + ':' + flash}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div> : <div className="winner dim">{t('no_bids')}</div>}
             {flash > 0 && <div className="motiv" key={'m' + flash}>{MOTIV[lang][line]}</div>}
           </>)}
         </>)}
@@ -81,7 +89,7 @@ export default function StreamMode({ items, bidders, vendorName, lang, t, onAppr
       {pending.length > 0 && (
         <div className="reqs"><div className="reqhead">{t('stream_requests')} · {pending.length}</div>
           {pending.slice(0, 3).map((b: any) => (
-            <div className="req" key={b.id}><span>{b.name}</span>
+            <div className="req" key={b.id}><span className="reqname"><Avatar url={avatarOf(b.id)} name={b.name} size="34px" /><span>{b.name}</span></span>
               <span className="acts"><button className="ok" onClick={() => onApprove(b.id)} aria-label={t('approve')}>✓</button><button className="no" onClick={() => onReject(b.id)} aria-label={t('reject')}>✕</button></span></div>))}
           {pending.length > 3 && <div className="more">+{pending.length - 3}</div>}
         </div>)}
@@ -107,13 +115,19 @@ const CSS = `
 .pulseA{animation:pop .9s cubic-bezier(.2,.9,.2,1)}.pulseB{animation:popb .9s cubic-bezier(.2,.9,.2,1)}
 .ring{position:absolute;left:50%;top:50%;width:30%;aspect-ratio:1;border:2px solid #d7b77f;border-radius:50%;transform:translate(-50%,-50%) scale(.4);opacity:0;animation:ring 1.4s ease-out}
 .rule{width:min(260px,40vw);height:1px;margin:clamp(14px,3vh,30px) auto;background:linear-gradient(90deg,transparent,#a77b3c,transparent)}
-.winner{margin-top:8px;font-size:clamp(30px,8.5vw,96px);font-weight:600;color:#fff;animation:slide .9s cubic-bezier(.2,.9,.2,1) both;text-shadow:0 0 40px #a77b3c55}
+.av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;flex-shrink:0;background:linear-gradient(145deg,#2a2418,#14110b);border:2px solid #a77b3c;box-shadow:0 0 28px #a77b3c44}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av{font-size:clamp(22px,4.5vw,48px)}
+.reqname .av{font-size:15px}
+.av b{color:#d7b77f;font-weight:600}
+.winner{display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,28px);margin-top:8px;font-size:clamp(30px,8.5vw,96px);font-weight:600;color:#fff;animation:slide .9s cubic-bezier(.2,.9,.2,1) both;text-shadow:0 0 40px #a77b3c55}
 .winner.dim{color:#5c584f;font-size:clamp(20px,4vw,40px);animation:none}
 .motiv{margin-top:clamp(14px,3vh,30px);font-size:clamp(14px,2.6vw,26px);color:#d7b77f;animation:fade 3.2s ease both}
 .congrats{font-size:clamp(26px,7vw,70px);color:#d7b77f;font-weight:600;animation:slide 1s both}
 .custom{font-size:clamp(28px,7vw,72px);color:#d7b77f;font-weight:600;animation:breathe 3s ease-in-out infinite}
 .paused,.wait{color:#8f8a7e;font-size:clamp(16px,3vw,28px);margin:8px 0}
 .reqs{position:absolute;bottom:18px;inset-inline-end:18px;z-index:3;width:min(300px,82vw);background:#0c0c0cd9;border:1px solid #ffffff1a;border-radius:16px;padding:12px;backdrop-filter:blur(8px);text-align:start}
+.reqname{display:flex;align-items:center;gap:10px;min-width:0}.reqname>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reqhead{font-size:11px;letter-spacing:2px;color:#8f8a7e;margin-bottom:8px}
 .req{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-top:1px solid #ffffff10;font-size:15px}
 .acts{display:flex;gap:6px}
