@@ -36,13 +36,13 @@ export default function AdminClient({ overview: o, settings, outstanding = [] }:
                 {v.status === 'suspended' && <button className="btn green" onClick={() => post({ action: 'vendor', id: v.id, status: 'active' })}>{t('reactivate')}</button>}</td></tr>))}</tbody></table>
         </div>
         <div className="card"><h3>{t('settings')}</h3>
-          <label>{t('activation_fee')} (AED)</label>{money('activation_fee_fils')}
-          <label>{t('item_fee')} (AED)</label>{money('item_fee_fils')}
-          <label>{t('min_session_fee')} (AED)</label>{money('min_session_fee_fils')}
+          <label>{t('activation_fee')} ({lang === 'ar' ? 'درهم' : 'AED'})</label>{money('activation_fee_fils')}
+          <label>{t('item_fee')} ({lang === 'ar' ? 'درهم' : 'AED'})</label>{money('item_fee_fils')}
+          <label>{t('min_session_fee')} ({lang === 'ar' ? 'درهم' : 'AED'})</label>{money('min_session_fee_fils')}
           <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>{t('min_session_fee_hint')}</p>
           <label>{t('billing_mode')}</label><select value={s.billing_mode} onChange={e => setS({ ...s, billing_mode: e.target.value })}>
             <option value="manual">manual</option><option value="per_session">per_session</option><option value="threshold">threshold</option></select>
-          <label>{t('threshold')} (AED)</label>{money('billing_threshold_fils')}
+          <label>{t('threshold')} ({lang === 'ar' ? 'درهم' : 'AED'})</label>{money('billing_threshold_fils')}
           <button className="btn gold full" onClick={() => post({ action: 'settings', values: s })}>{t('save')}</button>
           {msg && <p className="muted">{msg}</p>}
         </div>
