@@ -5,14 +5,18 @@ import { sb } from '@/lib/supabase-browser'
 import { useLang } from './Lang'
 import TermsNotice from './TermsNotice'
 
-// Platform account for bidders. Sign up (name + phone + password + SMS code), then phone + password.
+// Platform account for bidders.
+// Sign up: nickname + phone + date of birth + password. Sign in: phone + password.
+// Forgot password: phone + date of birth + new password.
 // allowSignup=false (used on host pages) shows only sign-in plus a link to the platform sign-up page.
 export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in', next = '/' }: { onDone: () => void; allowSignup?: boolean; startMode?: 'in' | 'up'; next?: string }) {
   const { t } = useLang(); const db = sb()
-  const [mode, setMode] = useState<'in' | 'up'>(allowSignup ? startMode : 'in'), [step, setStep] = useState<'form' | 'otp'>('form')
-  const [name, setName] = useState(''), [phone, setPhone] = useState(''), [pw, setPw] = useState(''), [code, setCode] = useState('')
+  const [mode, setMode] = useState<'in' | 'up' | 'reset'>(allowSignup ? startMode : 'in')
+  const [name, setName] = useState(''), [phone, setPhone] = useState(''), [dob, setDob] = useState(''), [pw, setPw] = useState('')
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
   const norm = (p: string) => '+' + p.replace(/\D/g, '')
+  const tr = (c: string) => (t(c) === c ? t('GENERIC') : t(c))
+  const post = async (url: string, body: any) => { try { return await (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json() } catch { return { error: 'GENERIC' } } }
 
   const signIn = async () => {
     setBusy(true); setErr('')
@@ -20,40 +24,46 @@ export default function BidderAuth({ onDone, allowSignup = true, startMode = 'in
     setBusy(false); error ? setErr(t('BAD_LOGIN')) : onDone()
   }
   const signUp = async () => {
-    if (!name.trim()) return setErr(t('name'))
+    if (!name.trim()) return setErr(t('NAME_REQUIRED'))
+    if (!dob) return setErr(t('BAD_DOB'))
     if (pw.length < 8) return setErr(t('PW_SHORT'))
     setBusy(true); setErr('')
-    try { // phone and name must not be registered already
-      const r = await (await fetch('/api/auth/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone: norm(phone), name }) })).json()
-      if (r.result && r.result !== 'OK') { setBusy(false); return setErr(t(r.result)) }
-      if (r.error) { setBusy(false); return setErr(t(r.error) === r.error ? t('GENERIC') : t(r.error)) }
-    } catch { setBusy(false); return setErr(t('GENERIC')) }
-    const { error } = await db.auth.signUp({ phone: norm(phone), password: pw, options: { data: { full_name: name.trim() } } })
-    setBusy(false); error ? setErr(error.message) : setStep('otp')
+    const j = await post('/api/auth/register', { kind: 'bidder', nickname: name.trim(), phone: norm(phone), dob, password: pw })
+    if (j.error) { setBusy(false); return setErr(tr(j.error)) }
+    const { error } = await db.auth.signInWithPassword({ phone: norm(phone), password: pw })
+    setBusy(false); error ? setErr(t('BAD_LOGIN')) : onDone()
   }
-  const verify = async () => {
+  const reset = async () => {
+    if (!dob) return setErr(t('BAD_DOB'))
+    if (pw.length < 8) return setErr(t('PW_SHORT'))
     setBusy(true); setErr('')
-    const { error } = await db.auth.verifyOtp({ phone: norm(phone), token: code, type: 'sms' })
-    setBusy(false); error ? setErr(error.message) : onDone()
+    const j = await post('/api/auth/reset', { kind: 'bidder', phone: norm(phone), dob, password: pw })
+    if (j.error) { setBusy(false); return setErr(tr(j.error)) }
+    const { error } = await db.auth.signInWithPassword({ phone: norm(phone), password: pw })
+    setBusy(false); error ? (setMode('in'), setErr(t('reset_ok'))) : onDone()
   }
+  const switchTo = (m: 'in' | 'up' | 'reset') => { setMode(m); setErr(''); setPw('') }
+
   return (
     <div>
-      {step === 'form' && allowSignup && <div className="row" style={{ gap: 8 }}>
-        <button className={'btn ' + (mode === 'in' ? '' : 'light')} style={{ flex: 1 }} onClick={() => { setMode('in'); setErr('') }}>{t('signin')}</button>
-        <button className={'btn ' + (mode === 'up' ? '' : 'light')} style={{ flex: 1 }} onClick={() => { setMode('up'); setErr('') }}>{t('create_account')}</button>
+      {allowSignup && mode !== 'reset' && <div className="row" style={{ gap: 8 }}>
+        <button className={'btn ' + (mode === 'in' ? '' : 'light')} style={{ flex: 1 }} onClick={() => switchTo('in')}>{t('signin')}</button>
+        <button className={'btn ' + (mode === 'up' ? '' : 'light')} style={{ flex: 1 }} onClick={() => switchTo('up')}>{t('create_account')}</button>
       </div>}
-      {step === 'form' ? (<>
-        {mode === 'up' && <><label>{t('name')}</label><input value={name} onChange={e => setName(e.target.value)} /></>}
-        <label>{t('phone')}</label><input dir="ltr" inputMode="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
-        <label>{t('password')}</label><input type="password" value={pw} onChange={e => setPw(e.target.value)} />
-        <button className="btn gold full" disabled={busy || !phone || !pw} onClick={mode === 'in' ? signIn : signUp}>{mode === 'in' ? t('signin') : t('create_account')}</button>
-        {mode === 'up' && <TermsNotice />}
-        {!allowSignup && <p className="muted" style={{ textAlign: 'center' }}>{t('no_account')} <Link href={'/signup?next=' + encodeURIComponent(next)}>{t('create_platform')}</Link></p>}
-      </>) : (<>
-        <label>{t('code')}</label><input dir="ltr" inputMode="numeric" value={code} onChange={e => setCode(e.target.value)} />
-        <button className="btn gold full" disabled={busy || !code} onClick={verify}>{t('verify')}</button>
-      </>)}
+      {mode === 'reset' && <h3 style={{ marginBottom: 4 }}>{t('reset_pw')}</h3>}
+      {mode === 'reset' && <p className="muted" style={{ marginTop: 0 }}>{t('reset_hint_bidder')}</p>}
+      {mode === 'up' && <><label>{t('nickname')}</label><input value={name} maxLength={40} onChange={e => setName(e.target.value)} /></>}
+      <label>{t('phone')}</label><input dir="ltr" inputMode="tel" autoComplete="tel" placeholder="+9715XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />
+      {mode !== 'in' && <><label>{t('dob')}</label><input type="date" dir="ltr" value={dob} max={new Date().toISOString().slice(0, 10)} onChange={e => setDob(e.target.value)} /></>}
+      <label>{mode === 'reset' ? t('new_password') : t('password')}</label>
+      <input type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} value={pw} onChange={e => setPw(e.target.value)} />
       {err && <p className="muted" style={{ color: 'var(--red)' }}>{err}</p>}
+      <button className="btn gold full" disabled={busy || !phone || !pw} onClick={mode === 'in' ? signIn : mode === 'up' ? signUp : reset}>
+        {mode === 'in' ? t('signin') : mode === 'up' ? t('create_account') : t('reset_pw')}</button>
+      {mode === 'in' && <p style={{ textAlign: 'center', margin: '10px 0 0' }}><a href="#" onClick={e => { e.preventDefault(); switchTo('reset') }}>{t('forgot_pw')}</a></p>}
+      {mode === 'reset' && <p style={{ textAlign: 'center', margin: '10px 0 0' }}><a href="#" onClick={e => { e.preventDefault(); switchTo('in') }}>{t('back_btn')}</a></p>}
+      {mode === 'up' && <TermsNotice />}
+      {!allowSignup && mode === 'in' && <p className="muted" style={{ textAlign: 'center' }}>{t('no_account')} <Link href={'/signup?next=' + encodeURIComponent(next)}>{t('create_platform')}</Link></p>}
     </div>
   )
 }
