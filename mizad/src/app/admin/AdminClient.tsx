@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/components/Lang'
-import { fmt } from '@/lib/money'
+import { fmt as fmt0 } from '@/lib/money'
+const fmt = (n: number, l: string) => fmt0(n, l, 'AED')
 
 export default function AdminClient({ overview: o, settings }: any) {
   const { t, lang } = useLang(); const r = useRouter(); const [s, setS] = useState(settings), [msg, setMsg] = useState('')
