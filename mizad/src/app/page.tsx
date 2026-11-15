@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Logo from '@/components/Logo'
+import InstallPrompt from '@/components/InstallPrompt'
 import { useCallback, useEffect, useState } from 'react'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
@@ -31,6 +32,7 @@ export default function Home() {
           {user?.phone ? <button className="btn gold full" onClick={() => setProf(true)}>{t('my_profile')}</button>
             : <BidderAuth onDone={load} />}
         </div>))}
+      <InstallPrompt />
       <Link href="/explore"><button className="btn gold full section">{t('explore')}</button></Link>
       {!(user && !user.phone) && <div className="card" style={{ textAlign: 'center' }}>
         <h3>{t('host_section')}</h3>

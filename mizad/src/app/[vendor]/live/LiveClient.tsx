@@ -8,6 +8,8 @@ import { useLang } from '@/components/Lang'
 import { fmt, aedToFils, setCurrency } from '@/lib/money'
 import BidderAuth from '@/components/BidderAuth'
 import Profile from '@/components/Profile'
+import InstallPrompt from '@/components/InstallPrompt'
+import NotifyPrompt from '@/components/NotifyPrompt'
 const stripeP = process.env.NEXT_PUBLIC_STRIPE_PK ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PK) : null
 
 function PayForm({ onDone, t }: any) {
@@ -172,6 +174,8 @@ export default function Live({ slug }: { slug: string }) {
         {!prof?.full_name && <><label>{t('name')}</label><input value={name} onChange={e => setName(e.target.value)} /></>}
         <button className="btn gold full" disabled={!(prof?.full_name || name).trim()} onClick={join}>{t('request_join_one')}</button></div>}
       {me?.status === 'pending' && <div className="notice">{t('pending_msg')}</div>}
+      {me && me.status !== 'rejected' && <NotifyPrompt />}
+      <InstallPrompt />
       {(me?.status === 'rejected' || me?.status === 'suspended') && <div className="notice">{t('rejected_msg')}</div>}
 
       <div className="card section"><h3>{t('bids')}</h3>

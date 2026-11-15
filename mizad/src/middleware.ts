@@ -12,4 +12,4 @@ export async function middleware(req: NextRequest) {
   await s.auth.getUser()
   return res
 }
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] }
+export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|icons/|apple-icon|icon.svg).*)'] }
