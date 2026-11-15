@@ -26,7 +26,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
   const upload = async (blob: Blob) => {
     setUpBusy(true); setCropFile(null)
     const path = `${user.id}/${Date.now()}.jpg`
-    const { error } = await db.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg' })
+    const { error } = await db.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' })
     if (error) { setUpBusy(false); return setMsg(error.message) }
     const url = db.storage.from('avatars').getPublicUrl(path).data.publicUrl
     const old = prof?.avatar_url ? decodeURIComponent(String(prof.avatar_url).split('/avatars/')[1]?.split('?')[0] || '') : ''

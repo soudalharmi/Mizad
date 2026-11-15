@@ -13,7 +13,7 @@ export default function HostProfile({ vendor, onClose }: { vendor: any; onClose:
   const upload = async (blob: Blob) => {
     setCrop(null); setBusy(true)
     const path = `${vendor.owner_id}/host-${Date.now()}.jpg`
-    const { error } = await db.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg' })
+    const { error } = await db.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' })
     setBusy(false); if (error) return setMsg(error.message)
     setLogo(db.storage.from('avatars').getPublicUrl(path).data.publicUrl)
   }

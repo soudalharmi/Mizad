@@ -30,32 +30,62 @@ export default function Live({ slug }: { slug: string }) {
   const [offerAmt, setOfferAmt] = useState(''), [myOffer, setMyOffer] = useState<any>(null)
   const idem = useRef('')
 
-  const load = useCallback(async () => {
-    const { data: v } = await db.from('vendors').select('*').eq('slug', slug).maybeSingle(); setVendor(v); if (!v) return
+  // Data loading is split so a busy live stays light for the database:
+  //  - load(): everything, used on open and after the viewer's own actions
+  //  - refreshLive(): only the current product, its last bids and my offer
+  //  - live events update the screen directly; a refresh runs at most once per 1.5 s
+  const vRef = useRef<any>(null), meRef = useRef<any>(null), itemRef = useRef<any>(null)
+  useEffect(() => { itemRef.current = item }, [item])
+  useEffect(() => { meRef.current = me }, [me])
+  const refreshLive = useCallback(async () => {
+    const v = vRef.current; if (!v) return
     const { data: its } = await db.from('auction_items').select('*').eq('vendor_id', v.id).in('status', ['live', 'paused']).order('status').limit(1)
     const it = its?.[0] || null; setItem(it)
     if (it) { const { data: b } = await db.from('bids').select('*').eq('item_id', it.id).order('created_at', { ascending: false }).limit(15); setBids(b || []) } else setBids([])
+    const m = meRef.current
+    if (it && m) { const { data: o } = await db.from('offers').select('*').eq('item_id', it.id).eq('bidder_id', m.id).order('created_at', { ascending: false }).limit(1); setMyOffer(o?.[0] || null) } else setMyOffer(null)
+  }, [])
+  const load = useCallback(async () => {
+    const { data: v } = await db.from('vendors').select('*').eq('slug', slug).maybeSingle(); vRef.current = v; setVendor(v); if (!v) return
     const { data: { user: u } } = await db.auth.getUser(); setUser(u)
     if (u) {
-      const { data: m } = await db.from('bidders').select('*').eq('vendor_id', v.id).eq('user_id', u.id).maybeSingle(); setMe(m)
-      const { data: p } = await db.from('profiles').select('full_name,avatar_url').eq('id', u.id).maybeSingle(); setProf(p)
-      if (it && m) { const { data: o } = await db.from('offers').select('*').eq('item_id', it.id).eq('bidder_id', m.id).order('created_at', { ascending: false }).limit(1); setMyOffer(o?.[0] || null) } else setMyOffer(null)
-    } else { setMe(null); setProf(null); setMyOffer(null) }
-  }, [slug])
+      const [{ data: m }, { data: p }] = await Promise.all([db.from('bidders').select('*').eq('vendor_id', v.id).eq('user_id', u.id).maybeSingle(), db.from('profiles').select('full_name,avatar_url').eq('id', u.id).maybeSingle()])
+      meRef.current = m; setMe(m); setProf(p)
+    } else { meRef.current = null; setMe(null); setProf(null) }
+    await refreshLive()
+  }, [slug, refreshLive])
   useEffect(() => { load() }, [load])
+  const refTimer = useRef<any>(null)
+  const scheduleRefresh = useCallback((ms = 1500) => { if (refTimer.current) return; refTimer.current = setTimeout(() => { refTimer.current = null; refreshLive() }, ms) }, [refreshLive])
+  useEffect(() => () => clearTimeout(refTimer.current), [])
   useEffect(() => {
     if (!vendor) return
     const f = `vendor_id=eq.${vendor.id}`
-    const ch = db.channel('live-' + vendor.id)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'auction_items', filter: f }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: f }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bidders', filter: f }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'offers', filter: f }, load).subscribe()
+    let ch = db.channel('live-' + vendor.id + '-' + (me?.id || 'guest'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'auction_items', filter: f }, (p: any) => {
+        const row = p.new, cur = itemRef.current
+        if (row?.id && cur?.id === row.id && (row.status === 'live' || row.status === 'paused')) setItem((x: any) => ({ ...x, ...row }))  // instant price/leader update
+        else scheduleRefresh(300)   // a different product opened or this one closed
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: f }, (p: any) => {
+        const row = p.new
+        if (row?.item_id && row.item_id === itemRef.current?.id) setBids(list => [row, ...list.filter(x => x.id !== row.id)].slice(0, 15))
+      })
+    if (me?.id) { // only my own approval status and my own offers matter to me
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'bidders', filter: `id=eq.${me.id}` }, (p: any) => { if (p.new?.id) { meRef.current = { ...meRef.current, ...p.new }; setMe((x: any) => ({ ...x, ...p.new })) } })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'offers', filter: `bidder_id=eq.${me.id}` }, () => scheduleRefresh(300))
+    }
+    ch.subscribe()
     return () => { db.removeChannel(ch) }
-  }, [vendor?.id, load])
+  }, [vendor?.id, me?.id, scheduleRefresh])
 
-  // Safety net: refresh every 5s while the page is visible, so nothing needs a manual refresh.
-  useEffect(() => { const i = setInterval(() => { if (document.visibilityState === 'visible') load() }, 5000); return () => clearInterval(i) }, [load])
+  // Safety net only: a light refresh every 20 s while visible, and right away when the viewer comes back to the tab.
+  useEffect(() => {
+    const i = setInterval(() => { if (document.visibilityState === 'visible') refreshLive() }, 20000)
+    const onVis = () => { if (document.visibilityState === 'visible') refreshLive() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { clearInterval(i); document.removeEventListener('visibilitychange', onVis) }
+  }, [refreshLive])
 
   const hasLeader = !!item?.leader_bidder_id
   const next = item ? (hasLeader ? item.current_price_fils + item.increment_fils : item.start_price_fils) : 0
@@ -93,7 +123,11 @@ export default function Live({ slug }: { slug: string }) {
   const join = async () => { const nm = (prof?.full_name || name).trim(); const { error } = await db.from('bidders').insert({ vendor_id: vendor.id, user_id: user.id, name: nm }); error ? setMsg(error.message) : load() }
   useEffect(() => { if (msg) { const x = setTimeout(() => setMsg(''), 4000); return () => clearTimeout(x) } }, [msg])
   // While waiting for host approval, check every 4s so the page unlocks without a refresh.
-  useEffect(() => { if (me?.status !== 'pending') return; const i = setInterval(load, 4000); return () => clearInterval(i) }, [me?.status, load])
+  useEffect(() => { // waiting for approval: check only my own row (the live event usually arrives first)
+    if (me?.status !== 'pending' || !me?.id) return
+    const i = setInterval(async () => { const { data } = await db.from('bidders').select('*').eq('id', me.id).maybeSingle(); if (data) { meRef.current = data; setMe(data) } }, 6000)
+    return () => clearInterval(i)
+  }, [me?.status, me?.id])
 
   if (!vendor) return <main className="wrap"><div className="empty">…</div></main>
   setCurrency(vendor.currency)

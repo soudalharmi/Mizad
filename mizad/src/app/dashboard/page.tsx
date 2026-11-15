@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
 import { aedToFils, fmt, setCurrency } from '@/lib/money'
+import { compressImage } from '@/lib/image'
 import { CURRENCIES, currencyLabel } from '@/lib/currency'
 import StreamMode from '@/components/StreamMode'
 import HostProfile from '@/components/HostProfile'
@@ -48,12 +49,25 @@ export default function Dash() {
     if (uids.length) { const { data: pr } = await db.from('profiles').select('id,avatar_url').in('id', uids); setAvatars(Object.fromEntries((pr || []).filter((x: any) => x.avatar_url).map((x: any) => [x.id, x.avatar_url]))) }
   }, [])
   useEffect(() => { load() }, [load])
+  // Live updates: apply each change to the screen at once from the event itself, then do at most one
+  // full reload every 2 seconds for totals and anything derived. Busy lives no longer trigger a reload per bid.
+  const reloadTimer = useRef<any>(null)
+  const scheduleLoad = useCallback(() => { if (reloadTimer.current) return; reloadTimer.current = setTimeout(() => { reloadTimer.current = null; load() }, 2000) }, [load])
+  useEffect(() => () => clearTimeout(reloadTimer.current), [])
   useEffect(() => {
     if (!v) return; const f = `vendor_id=eq.${v.id}`
+    const merge = (setter: any, sortNewest = false) => (p: any) => setter((list: any[]) => {
+      if (p.eventType === 'DELETE') return list.filter(x => x.id !== p.old?.id)
+      const row = p.new; if (!row?.id) return list
+      const i = list.findIndex(x => x.id === row.id)
+      if (i >= 0) { const c = list.slice(); c[i] = { ...c[i], ...row }; return c }
+      return sortNewest ? [row, ...list] : [...list, row]
+    })
+    const live: Record<string, any> = { auction_items: merge(setItems), bids: merge(setBids, true), support_contributions: merge(setSup, true), bidders: merge(setBidders, true), offers: merge(setOffers, true), auctions: merge(setSessions, true) }
     const ch = db.channel('dash-' + v.id)
-    for (const table of ['auction_items', 'bids', 'support_contributions', 'bidders', 'offers', 'auctions']) ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: f }, load)
+    for (const table of Object.keys(live)) ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: f }, (p: any) => { live[table](p); scheduleLoad() })
     ch.subscribe(); return () => { db.removeChannel(ch) }
-  }, [v?.id, load])
+  }, [v?.id, scheduleLoad])
   // Safety net: refresh every 4s while the dashboard is open, so new requests always appear without a manual refresh.
   useEffect(() => {
     if (!v) return
@@ -94,7 +108,7 @@ export default function Dash() {
   const addItem = async () => {
     let image_url = null, ref_code: string | null = null
     if (mode === 'code') ref_code = code
-    else if (file) { const p = `${v.id}/${crypto.randomUUID()}`; const { error } = await db.storage.from('products').upload(p, file); if (!error) image_url = db.storage.from('products').getPublicUrl(p).data.publicUrl }
+    else if (file) { const c = await compressImage(file); const p = `${v.id}/${crypto.randomUUID()}.${c.ext}`; const { error } = await db.storage.from('products').upload(p, c.blob, { contentType: c.type, cacheControl: '31536000' }); if (!error) image_url = db.storage.from('products').getPublicUrl(p).data.publicUrl }
     const { data: ins, error } = await db.from('auction_items').insert({ vendor_id: v.id, name: form.name, description: form.description, image_url, ref_code,
       position: items.length, start_price_fils: atype === 'custom' ? 100 : aedToFils(form.start), increment_fils: atype === 'custom' ? 200 : aedToFils(form.inc), auction_type: atype }).select('id').single()
     if (error) { if (error.code === '23505' && mode === 'code') { setCode(genCode()); return say('Code was taken, a new one was generated. Tap save again.') } return say(error.message) }
