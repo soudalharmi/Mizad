@@ -74,8 +74,9 @@ export default function Live({ slug }: { slug: string }) {
   }
   const support = async () => {
     setBusy(true); const j = await post('/api/support', { itemId: item.id, newPriceFils: amount, idem: key() }); setBusy(false)
-    if (j.error) { idem.current = ''; setModal(''); return setMsg(err(j.error)) }
-    setSecret(j.clientSecret); setModal('pay')
+    idem.current = ''; setModal('')
+    if (j.error) return setMsg(err(j.error))
+    setMsg(t('support_ok')); load()
   }
   const sendOffer = async () => {
     setBusy(true); const j = await post('/api/offer', { itemId: item.id, amountFils: aedToFils(offerAmt), idem: crypto.randomUUID() }); setBusy(false)
@@ -151,7 +152,7 @@ export default function Live({ slug }: { slug: string }) {
             <div className="kv"><span>{t('proposed_price')}</span><b>{fmt(amount, lang)}</b></div>
             <div className="kv"><span>{t('your_contrib')}</span><b>{fmt(contrib, lang)}</b></div>
             <p className="muted">{t('support_note')}</p>
-            <button className="btn gold full" disabled={busy || contrib <= 0} onClick={support}>{t('confirm_support')} – تأكيد الدعم</button>
+            <button className="btn gold full" disabled={busy || contrib <= 0} onClick={support}>{t('confirm_support')}</button>
             <button className="btn light full" onClick={() => setModal('')}>{t('cancel')}</button></>)}
           {modal === 'pay' && stripeP && (<Elements stripe={stripeP} options={{ clientSecret: secret }}>
             <h3>{fmt(contrib, lang)}</h3>
