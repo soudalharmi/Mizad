@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (kind === 'activation') {
       if (v.status !== 'pending_activation') return fail('ALREADY_ACTIVE', 'already active')
       const { data: s } = await db.from('platform_settings').select('activation_fee_fils').single()
-      amount = s!.activation_fee_fils; name = 'MIZAD account activation'; k = 'activation'
+      amount = s!.activation_fee_fils; name = 'Mazad Boss account activation'; k = 'activation'
       if (amount === 0) { await db.rpc('activate_vendor', { p_vendor: v.id, p_amount: 0, p_ref: 'free-' + v.id }); return NextResponse.json({ url: site + '/dashboard' }) }
     } else if (kind === 'invoice' || kind === 'fees') {
       if (kind === 'fees') {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       const q = db.from('invoices').select('*').eq('vendor_id', v.id).eq('status', 'open')
       const { data: inv } = kind === 'invoice' ? await q.eq('id', invoiceId).maybeSingle() : await q.order('created_at').limit(1).maybeSingle()
       if (!inv) return fail('NOTHING_DUE', 'no open invoice', 404)
-      amount = Number(inv.total_fils); name = 'MIZAD service fees'; invoice = inv.id
+      amount = Number(inv.total_fils); name = 'Mazad Boss service fees'; invoice = inv.id
     } else return fail('GENERIC', 'unknown kind')
     if (amount < 200) return fail('PAY_MIN', 'amount below AED 2: ' + amount)
 

@@ -74,7 +74,7 @@ export default function Dash() {
   useEffect(() => { if (!v?.id) return; fetch('/api/vendor/pay-sync', { method: 'POST' }).then(r => r.json()).then(j => { if (j?.changed) load() }).catch(() => {}) }, [v?.id])
   const pendingCount = bidders.filter(b => b.status === 'pending').length
   const offerCount = offers.filter(o => o.status === 'pending' && items.some(i => i.id === o.item_id && !i.revealed && (i.status === 'live' || i.status === 'paused'))).length
-  useEffect(() => { const n = pendingCount + offerCount; document.title = n ? `(${n}) MIZAD` : 'Mizad | مِزاد' }, [pendingCount, offerCount])
+  useEffect(() => { const n = pendingCount + offerCount; document.title = n ? `(${n}) Mazad Boss` : 'Mazad Boss' }, [pendingCount, offerCount])
 
   const post = async (url: string, body: any = {}) => (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json()
   const act = async (action: string, itemId: string) => { const j = await post('/api/vendor/item', { itemId, action }); j.error ? say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) : load() }
@@ -175,7 +175,7 @@ export default function Dash() {
   const statement = (i: any) => {
     const rows = fees.filter(f => f.invoice_id === i.id).map(f => `${(f.auction_items?.name || 'Session minimum fee').replace(/,/g, ' ')},${(f.amount_fils / 100).toFixed(2)}`)
     const blob = new Blob([`item,fee_AED\n${rows.join('\n')}\ntotal,${(i.total_fils / 100).toFixed(2)}`], { type: 'text/csv' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mizad-statement-${i.id.slice(0, 8)}.csv`; a.click()
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mazad-boss-statement-${i.id.slice(0, 8)}.csv`; a.click()
   }
 
   if (!ready) return <main className="wrap"><div className="empty">…</div></main>

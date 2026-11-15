@@ -1,6 +1,6 @@
 // Terms and Conditions text. Change PLATFORM here once and it updates everywhere.
 // NOTE: this is a draft written to disclaim liability for listed products; have a UAE lawyer review it before launch.
-export const PLATFORM = { ar: 'مزاد بوس', en: 'Mazad Boss' }
+export const PLATFORM = { ar: 'Mazad Boss', en: 'Mazad Boss' }
 export const TERMS_UPDATED = '2026-11-15'
 
 type Sec = { h: string; p: string[] }
