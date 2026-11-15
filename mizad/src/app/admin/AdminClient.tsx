@@ -5,7 +5,7 @@ import { useLang } from '@/components/Lang'
 import { fmt as fmt0 } from '@/lib/money'
 const fmt = (n: number, l: string) => fmt0(n, l, 'AED')
 
-export default function AdminClient({ overview: o, settings }: any) {
+export default function AdminClient({ overview: o, settings, outstanding = [] }: any) {
   const { t, lang } = useLang(); const r = useRouter(); const [s, setS] = useState(settings), [msg, setMsg] = useState('')
   const post = async (body: any) => { const j = await (await fetch('/api/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json(); setMsg(j.error || '✓'); r.refresh() }
   const num = (k: string) => (e: any) => setS({ ...s, [k]: parseInt(e.target.value || '0', 10) })
@@ -16,6 +16,13 @@ export default function AdminClient({ overview: o, settings }: any) {
         {stat(t('vendors'), o.vendors)}{stat(t('active_vendors'), o.active_vendors)}{stat(t('bidders'), o.bidders)}
         {stat(t('items'), o.items)}{stat(t('chargeable'), o.chargeable_items)}{stat(t('outstanding'), fmt(o.outstanding_fils, lang))}
         {stat(t('activation_rev'), fmt(o.activation_revenue_fils, lang))}{stat(t('fee_rev'), fmt(o.service_fee_revenue_fils, lang))}
+      </div>
+      <div className="card" style={{ margin: '18px 0' }}><h3>{t('outstanding_hosts')} ({outstanding.length})</h3>
+        {outstanding.length === 0 ? <p className="muted">{t('no_outstanding')}</p> : <div className="bidlist">{outstanding.map((h: any) => (
+          <div className="person" key={h.id}><div style={{ minWidth: 0 }}><b>{h.name}</b> <small className="muted" dir="ltr">/{h.slug}</small><br />
+            {h.phone ? <a dir="ltr" href={'tel:' + h.phone}>{h.phone}</a> : <small className="muted">{t('host_phone')}: —</small>}<br />
+            {h.email && <a dir="ltr" href={'mailto:' + h.email} style={{ wordBreak: 'break-all' }}>{h.email}</a>}</div>
+            <b style={{ whiteSpace: 'nowrap' }}>{fmt(h.amount_fils, lang)}</b></div>))}</div>}
       </div>
       <div className="grid">
         <div className="card"><h3>{t('vendors')}</h3>
