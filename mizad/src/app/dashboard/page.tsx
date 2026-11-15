@@ -31,7 +31,7 @@ export default function Dash() {
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
   const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
-  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
+  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 9000) }
 
   const load = useCallback(async () => {
     const { data: { user } } = await db.auth.getUser(); if (!user) return router.push('/login')
@@ -84,7 +84,12 @@ export default function Dash() {
   const setStatus = async (id: string, status: string) => { await db.from('bidders').update({ status }).eq('id', id); load() }
   const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
   const approveAll = async () => { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() }
-  const pay = async (kind: string, invoiceId?: string) => { const j = await post('/api/vendor/pay', { kind, invoiceId }); if (j.url) location.href = j.url; else say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) }
+  const pay = async (kind: string, invoiceId?: string) => {
+    let j: any = {}
+    try { j = await post('/api/vendor/pay', { kind, invoiceId }) } catch { j = { error: 'GENERIC', detail: 'server did not answer' } }
+    if (j.url) { location.href = j.url; return }
+    say((t(j.error) === j.error ? t('GENERIC') : t(j.error)) + (j.detail ? ' (' + j.detail + ')' : ''))
+  }
   const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur, phone: vphone.trim() || null }); error ? say(error.message) : load() }
   const addItem = async () => {
     let image_url = null, ref_code: string | null = null
