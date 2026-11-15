@@ -5,7 +5,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
-import { fmt, aedToFils } from '@/lib/money'
+import { fmt, aedToFils, setCurrency } from '@/lib/money'
 import BidderAuth from '@/components/BidderAuth'
 import Profile from '@/components/Profile'
 const stripeP = process.env.NEXT_PUBLIC_STRIPE_PK ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PK) : null
@@ -87,6 +87,7 @@ export default function Live({ slug }: { slug: string }) {
   useEffect(() => { if (me?.status !== 'pending') return; const i = setInterval(load, 4000); return () => clearInterval(i) }, [me?.status, load])
 
   if (!vendor) return <main className="wrap"><div className="empty">…</div></main>
+  setCurrency(vendor.currency)
   const contrib = amount - (item?.current_price_fils || 0)
   return (
     <main className="wrap" style={{ maxWidth: 560 }}>
