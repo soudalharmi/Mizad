@@ -36,6 +36,7 @@ export default function Home() {
         <Link href="/login?mode=up"><button className="btn full">{t('host_signup')}</button></Link>
         <p className="muted" style={{ margin: '10px 0 0' }}>{t('have_account')} <Link href="/login">{t('host_login')}</Link></p>
       </div>}
+      <p className="muted" style={{ textAlign: 'center', fontSize: 13 }}><Link href="/terms">{t('terms_link')}</Link></p>
       {prof && <Profile onClose={() => { setProf(false); load() }} />}
     </main>
   )
