@@ -94,10 +94,11 @@ export default function Dash() {
   useEffect(() => { const n = pendingCount + offerCount; document.title = n ? `(${n}) Mazad Boss` : 'Mazad Boss' }, [pendingCount, offerCount])
 
   const post = async (url: string, body: any = {}) => (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json()
-  const act = async (action: string, itemId: string) => { const j = await post('/api/vendor/item', { itemId, action }); j.error ? say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) : load() }
+  const pingOwners = () => { fetch('/api/vendor/notify-owners', { method: 'POST' }).catch(() => {}) } // background: never delays the host
+  const act = async (action: string, itemId: string) => { const j = await post('/api/vendor/item', { itemId, action }); if (j.error) return say(t(j.error) === j.error ? t('GENERIC') : t(j.error)); load(); pingOwners() }
   const sessionAct = async (action: 'start' | 'end') => { const j = await post('/api/vendor/session', { action, title: sTitle }); if (j.error) return say(t(j.error) === j.error ? t('GENERIC') : t(j.error)); setSTitle(''); load() }
   const logout = async () => { await db.auth.signOut({ scope: 'local' }); router.push('/login') }
-  const decide = async (offerId: string, accept: boolean) => { const j = await post('/api/vendor/offer', { offerId, accept }); if (j.error) { say(t(j.error) === j.error ? t('GENERIC') : t(j.error)); return false } load(); return true }
+  const decide = async (offerId: string, accept: boolean) => { const j = await post('/api/vendor/offer', { offerId, accept }); if (j.error) { say(t(j.error) === j.error ? t('GENERIC') : t(j.error)); return false } load(); pingOwners(); return true }
   const setStatus = async (id: string, status: string) => { await db.from('bidders').update({ status }).eq('id', id); load() }
   const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); if (!error && nv) { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() } error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
   const approveAll = async () => { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() }
