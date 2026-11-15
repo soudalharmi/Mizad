@@ -27,7 +27,7 @@ export default function Dash() {
   const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
   const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
-  const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED')
+  const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [showInv, setShowInv] = useState(false)
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
   const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
@@ -341,16 +341,17 @@ export default function Dash() {
 
       {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
       {tab === 'billing' && <div className="grid">
-        <div className="card"><div className="stats">
-          <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang, 'AED')}</b></div>
-          <div className="stat"><span className="muted">{t('chargeable')}</span><b>{fees.length}</b></div>
-          <div className="stat"><span className="muted">{t('fee_item')}</span><b>{fmt(fees[0]?.amount_fils ?? 250, lang, 'AED')}</b></div></div>
-          <button className="btn full" disabled={!unbilled} onClick={async () => { await post('/api/vendor/invoice'); load() }}>{t('gen_invoice')}</button></div>
-        <div className="card"><h3>{t('invoices')}</h3><div className="bidlist">{inv.map(i => (
-          <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang, 'AED')}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
-            <div className="person-actions"><span className={'pill ' + (i.status === 'paid' ? 'green' : 'gold')}>{i.status === 'paid' ? t('paid') : t('open_s')}</span>
-              <button className="btn light" onClick={() => statement(i)}>{t('download')}</button>
-              {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
+        <div className="card" style={{ textAlign: 'center' }}>
+          <span className="muted">{t('outstanding')}</span>
+          <div style={{ fontSize: 40, fontWeight: 700, margin: '8px 0 16px' }}>{fmt(unbilled + openInv, lang, 'AED')}</div>
+          {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_now')}</button>
+            : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}
+          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{fees.length} × {fmt(fees[0]?.amount_fils ?? 250, lang, 'AED')}</p></div>
+        {inv.length > 0 && <div className="card"><button className="btn light full" onClick={() => setShowInv(o => !o)}>{t('invoices')} ({inv.length}) {showInv ? '▲' : '▼'}</button>
+          {showInv && <div className="bidlist" style={{ marginTop: 10 }}>{inv.map(i => (
+            <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang, 'AED')}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
+              <div className="person-actions"><span className={'pill ' + (i.status === 'paid' ? 'green' : 'gold')}>{i.status === 'paid' ? t('paid') : t('open_s')}</span>
+                <button className="btn light" onClick={() => statement(i)}>{t('download')}</button></div></div>))}</div>}</div>}
       </div>}
       {streaming && <StreamMode items={items} bidders={bidders} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
