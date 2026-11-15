@@ -344,7 +344,7 @@ export default function Dash() {
         <div className="card" style={{ textAlign: 'center' }}>
           <span className="muted">{t('outstanding')}</span>
           <div style={{ fontSize: 40, fontWeight: 700, margin: '8px 0 16px' }}>{fmt(unbilled + openInv, lang, 'AED')}</div>
-          {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_now')}</button>
+          {unbilled + openInv >= 200 ? <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
             : <p className="muted" style={{ margin: 0 }}>{unbilled + openInv > 0 ? t('pay_min') : t('nothing_due')}</p>}
           <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{fees.length} × {fmt(fees[0]?.amount_fils ?? 250, lang, 'AED')}</p></div>
         {inv.length > 0 && <div className="card"><button className="btn light full" onClick={() => setShowInv(o => !o)}>{t('invoices')} ({inv.length}) {showInv ? '▲' : '▼'}</button>
