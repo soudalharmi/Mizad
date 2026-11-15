@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
+import TermsNotice from '@/components/TermsNotice'
 
 // Hosts (and the platform admin) use email + password.
 export default function Login() {
@@ -33,6 +34,7 @@ export default function Login() {
         <label>{t('password')}</label><input type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} value={pw} onChange={e => setPw(e.target.value)} />
         {msg && <p className="muted" style={{ color: 'var(--red)' }}>{msg}</p>}
         <button className="btn gold full" disabled={busy || !email || !pw} onClick={mode === 'in' ? signIn : signUp}>{mode === 'in' ? t('login') : t('host_signup')}</button>
+        {mode === 'up' && <TermsNotice />}
         <p className="muted" style={{ textAlign: 'center' }}>{mode === 'in' ? t('no_account') : t('have_account')} <a href="#" onClick={e => { e.preventDefault(); setMode(mode === 'in' ? 'up' : 'in'); setMsg('') }}>{mode === 'in' ? t('host_signup') : t('login')}</a></p>
         <p style={{ textAlign: 'center' }}><Link href="/">←</Link></p>
       </div>
