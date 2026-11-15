@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { sb } from '@/lib/supabase-browser'
 import { useLang } from '@/components/Lang'
-import { aedToFils, fmt } from '@/lib/money'
+import { aedToFils, fmt, setCurrency } from '@/lib/money'
+import { CURRENCIES, currencyLabel } from '@/lib/currency'
 import StreamMode from '@/components/StreamMode'
 import HostProfile from '@/components/HostProfile'
 import Link from 'next/link'
@@ -26,7 +27,7 @@ export default function Dash() {
   const [items, setItems] = useState<any[]>([]), [bidders, setBidders] = useState<any[]>([]), [bids, setBids] = useState<any[]>([])
   const [sup, setSup] = useState<any[]>([]), [fees, setFees] = useState<any[]>([]), [inv, setInv] = useState<any[]>([])
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
-  const [slug, setSlug] = useState(''), [vname, setVname] = useState('')
+  const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED')
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
   const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({})
   const itemsRef = useRef<any[]>([])
@@ -70,6 +71,7 @@ export default function Dash() {
     }
     run(); const i = setInterval(run, 8000); return () => { off = true; clearInterval(i) }
   }, [tab, salesView, v?.id])
+  useEffect(() => { if (!v?.id) return; fetch('/api/vendor/pay-sync', { method: 'POST' }).then(r => r.json()).then(j => { if (j?.changed) load() }).catch(() => {}) }, [v?.id])
   const pendingCount = bidders.filter(b => b.status === 'pending').length
   const offerCount = offers.filter(o => o.status === 'pending' && items.some(i => i.id === o.item_id && !i.revealed && (i.status === 'live' || i.status === 'paused'))).length
   useEffect(() => { const n = pendingCount + offerCount; document.title = n ? `(${n}) MIZAD` : 'Mizad | مِزاد' }, [pendingCount, offerCount])
@@ -82,8 +84,8 @@ export default function Dash() {
   const setStatus = async (id: string, status: string) => { await db.from('bidders').update({ status }).eq('id', id); load() }
   const toggleAuto = async () => { const nv = !v.auto_approve; const { error } = await db.from('vendors').update({ auto_approve: nv }).eq('id', v.id); error ? say(error.message) : setV({ ...v, auto_approve: nv }) }
   const approveAll = async () => { await db.from('bidders').update({ status: 'approved' }).eq('vendor_id', v.id).eq('status', 'pending'); load() }
-  const pay = async (kind: string, invoiceId?: string) => { const j = await post('/api/vendor/pay', { kind, invoiceId }); if (j.url) location.href = j.url; else say(t('GENERIC')) }
-  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname }); error ? say(error.message) : load() }
+  const pay = async (kind: string, invoiceId?: string) => { const j = await post('/api/vendor/pay', { kind, invoiceId }); if (j.url) location.href = j.url; else say(t(j.error) === j.error ? t('GENERIC') : t(j.error)) }
+  const createVendor = async () => { const { error } = await db.from('vendors').insert({ slug: slug.toLowerCase(), name: vname, currency: vcur }); error ? say(error.message) : load() }
   const addItem = async () => {
     let image_url = null, ref_code: string | null = null
     if (mode === 'code') ref_code = code
@@ -134,7 +136,7 @@ export default function Dash() {
       {ed && <div className="notice" style={{ marginTop: 8 }}>
         <label>{t('owner_name')}</label><input value={editP.oname} onChange={e => setEditP({ ...editP, oname: e.target.value })} />
         <label>{t('owner_phone')}</label><input dir="ltr" inputMode="tel" value={editP.ophone} onChange={e => setEditP({ ...editP, ophone: e.target.value })} />
-        <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
+        <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={editP.asked} onChange={e => setEditP({ ...editP, asked: e.target.value })} />
         <label>{t('category')}</label><input value={editP.cat} onChange={e => setEditP({ ...editP, cat: e.target.value })} />
         <button className="btn gold full" style={{ marginTop: 10 }} onClick={async () => { await savePriv(i.id, { owner_name: editP.oname.trim() || null, owner_phone: editP.ophone.trim() || null, asked_price_fils: editP.asked ? aedToFils(editP.asked) : null, category: editP.cat.trim() || null }); setEditP(null) }}>{t('save')}</button></div>}
     </div>)
@@ -150,6 +152,8 @@ export default function Dash() {
   if (!v) return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('create_page')}</h2>
     <label>{t('store_name')}</label><input value={vname} onChange={e => setVname(e.target.value)} />
     <label>{t('slug')}</label><input dir="ltr" value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-auction" />
+    <label>{t('currency')}</label><select value={vcur} onChange={e => setVcur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
+    <p className="muted">{t('currency_hint')}</p>
     <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
   if (v.status === 'pending_activation') return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('activate_title')}</h2>
     <p className="muted">{t('activate_text')}</p><button className="btn gold full" onClick={() => pay('activation')}>{t('activate_btn')}</button></div></main>)
@@ -160,6 +164,7 @@ export default function Dash() {
   const supTotal = cur ? cur.current_price_fils - cur.base_bid_fils : 0
   const unbilled = fees.filter(f => !f.invoice_id).reduce((s, f) => s + f.amount_fils, 0)
   const openInv = inv.filter(i => i.status === 'open').reduce((s, i) => s + i.total_fils, 0)
+  setCurrency(v.currency)
   const link = typeof location !== 'undefined' ? `${location.origin}/${v.slug}/live` : ''
   const pending = bidders.filter(b => b.status === 'pending'), approved = bidders.filter(b => b.status === 'approved')
   const stPill = (s: string) => s === 'live' ? 'green' : s === 'paused' ? 'gold' : ''
@@ -181,8 +186,12 @@ export default function Dash() {
           <button className="btn red" style={{ fontSize: 13 }} onClick={() => { if (confirm(t('end_session') + '?')) sessionAct('end') }}>{t('end_session')}</button></div>
         <button className="btn gold full" style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }} onClick={() => setStreaming(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /><path d="M8 21h8" /></svg>{t('stream_mode')}</button></div>
-        : <div className="card section"><p className="muted" style={{ marginTop: 0 }}>{t('session_none')}</p><input placeholder={t('session_title_ph')} value={sTitle} onChange={e => setSTitle(e.target.value)} />
-            <button className="btn gold full" onClick={() => sessionAct('start')}>{t('start_session')}</button></div>}
+        : <div className="card section">{unbilled + openInv > 0 ? <>
+            <div className="notice" style={{ marginTop: 0 }}><b>{t('fees_due_title')}</b><div style={{ marginTop: 4 }}>{t('fees_due_text')}</div><div style={{ fontSize: 22, fontWeight: 700, marginTop: 8 }}>{fmt(unbilled + openInv, lang, 'AED')}</div></div>
+            <button className="btn gold full" onClick={() => pay('fees')}>{t('pay_fees_now')}</button>
+            <button className="btn full" style={{ marginTop: 8, opacity: .45 }} disabled>{t('start_session')}</button></>
+          : <><p className="muted" style={{ marginTop: 0 }}>{t('session_none')}</p><input placeholder={t('session_title_ph')} value={sTitle} onChange={e => setSTitle(e.target.value)} />
+            <button className="btn gold full" onClick={() => sessionAct('start')}>{t('start_session')}</button></>}</div>}
       <button className="btn full section" style={{ background: '#fdf6e8', border: '1px solid #ecd9b0', color: '#7a5a2b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => { try { navigator.clipboard.writeText(link); say(t('copied')) } catch { say(link) } }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>{t('copy_link')}</button>
       <div className="grid">
@@ -252,12 +261,12 @@ export default function Dash() {
           {atype === 'custom' && <div className="notice" style={{ marginTop: 10 }}>{t('custom_hint')}</div>}
           <label>{t('name')}</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
           <label>{t('desc')}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <label>{t('start_price')} (AED)</label><input inputMode="decimal" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
-          <label>{t('increment')} (AED, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
+          <label>{t('start_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
+          <label>{t('increment')} ({v.currency || 'AED'}, ≥ 2)</label><input inputMode="decimal" value={form.inc} onChange={e => setForm({ ...form, inc: e.target.value })} />
           <div className="notice" style={{ marginTop: 14 }}><b>{t('owner_section')}</b> <small className="muted">({t('host_only')} · {t('optional')})</small>
             <label>{t('owner_name')}</label><input value={form.oname} onChange={e => setForm({ ...form, oname: e.target.value })} />
             <label>{t('owner_phone')}</label><input inputMode="tel" dir="ltr" value={form.ophone} onChange={e => setForm({ ...form, ophone: e.target.value })} />
-            <label>{t('asked_price')} (AED)</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} />
+            <label>{t('asked_price')} ({v.currency || 'AED'})</label><input inputMode="decimal" value={form.asked} onChange={e => setForm({ ...form, asked: e.target.value })} />
             <label>{t('category')}</label><input list="cats" value={form.cat} onChange={e => setForm({ ...form, cat: e.target.value })} /><datalist id="cats">{Array.from(new Set(Object.values(priv).map((x: any) => x.category).filter(Boolean))).map((c: any) => <option key={c} value={c} />)}</datalist></div>
           <label>{t('image')}</label>
           <div className="row" style={{ gap: 8 }}><button className={'btn ' + (mode === 'photo' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('photo')}>{t('photo_mode')}</button><button className={'btn ' + (mode === 'code' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setMode('code')}>{t('code_mode')}</button></div>
@@ -333,12 +342,12 @@ export default function Dash() {
       {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
       {tab === 'billing' && <div className="grid">
         <div className="card"><div className="stats">
-          <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang)}</b></div>
+          <div className="stat"><span className="muted">{t('outstanding')}</span><b>{fmt(unbilled + openInv, lang, 'AED')}</b></div>
           <div className="stat"><span className="muted">{t('chargeable')}</span><b>{fees.length}</b></div>
-          <div className="stat"><span className="muted">{t('fee_item')}</span><b>{fmt(fees[0]?.amount_fils ?? 250, lang)}</b></div></div>
+          <div className="stat"><span className="muted">{t('fee_item')}</span><b>{fmt(fees[0]?.amount_fils ?? 250, lang, 'AED')}</b></div></div>
           <button className="btn full" disabled={!unbilled} onClick={async () => { await post('/api/vendor/invoice'); load() }}>{t('gen_invoice')}</button></div>
         <div className="card"><h3>{t('invoices')}</h3><div className="bidlist">{inv.map(i => (
-          <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang)}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
+          <div className="person" key={i.id}><div><b>{fmt(i.total_fils, lang, 'AED')}</b><br /><small className="muted">{new Date(i.created_at).toLocaleDateString()}</small></div>
             <div className="person-actions"><span className={'pill ' + (i.status === 'paid' ? 'green' : 'gold')}>{i.status === 'paid' ? t('paid') : t('open_s')}</span>
               <button className="btn light" onClick={() => statement(i)}>{t('download')}</button>
               {i.status === 'open' && <button className="btn gold" onClick={() => pay('invoice', i.id)}>{t('pay')}</button>}</div></div>))}</div></div>
