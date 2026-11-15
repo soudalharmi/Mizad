@@ -28,11 +28,8 @@ update sale_products p set buyer_user_id=b.user_id
     and i.id=p.item_id and b.id=i.leader_bidder_id;
 
 -- Part B: what a buyer or an owner is allowed to see
-create or replace function sm_my_sales(p_user uuid, p_digits text)
-returns jsonb language sql security definer
-set search_path=public as $fn$
-select jsonb_build_object(
-  'buys', coalesce((
+create or replace function sm_my_buys(p_user uuid) returns jsonb language sql security definer set search_path=public as $fn$
+select coalesce((
     select jsonb_agg(s.x order by s.x->>'sold_on' desc)
     from (
       select jsonb_build_object(
@@ -58,8 +55,11 @@ select jsonb_build_object(
       join vendors v on v.id=p.vendor_id
       where p.stage='sold' and p.buyer_user_id=p_user
     ) s
-  ), '[]'::jsonb),
-  'owned', coalesce((
+  ), '[]'::jsonb)
+$fn$;
+
+create or replace function sm_my_owned(p_digits text) returns jsonb language sql security definer set search_path=public as $fn$
+select coalesce((
     select jsonb_agg(s.x order by s.x->>'received_on' desc)
     from (
       select jsonb_build_object(
@@ -94,10 +94,14 @@ select jsonb_build_object(
         and p.stage<>'cancelled'
     ) s
   ), '[]'::jsonb)
-)
 $fn$;
 
+create or replace function sm_my_sales(p_user uuid, p_digits text) returns jsonb language sql security definer set search_path=public as $fn$
+select jsonb_build_object('buys', sm_my_buys(p_user), 'owned', sm_my_owned(p_digits))
+$fn$;
+
+revoke all on function sm_my_buys(uuid) from public, anon, authenticated;
+revoke all on function sm_my_owned(text) from public, anon, authenticated;
+revoke all on function sm_my_sales(uuid,text) from public, anon, authenticated;
 revoke all on function sm_buyer_user() from public, anon, authenticated;
-revoke all on function sm_my_sales(uuid,text)
-  from public, anon, authenticated;
-grant execute on function sm_my_sales(uuid,text) to service_role;
+grant execute on function sm_my_buys(uuid), sm_my_owned(text), sm_my_sales(uuid,text) to service_role;
