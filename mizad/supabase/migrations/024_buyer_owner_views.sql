@@ -2,7 +2,8 @@
 
 -- Part A: link a sale to the buyer's account, and an owner switch
 alter table sale_products add column if not exists buyer_user_id uuid;
-alter table sale_owners add column if not exists portal boolean not null default false;
+alter table sale_owners add column if not exists portal boolean not null default true;
+update sale_owners set portal=true;
 
 create or replace function sm_buyer_user() returns trigger
 language plpgsql security definer set search_path=public as $fn$
