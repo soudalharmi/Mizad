@@ -6,10 +6,13 @@ import PhoneInput from './PhoneInput'
 import { fmt } from '@/lib/money'
 import AvatarCropper from './AvatarCropper'
 import AlertsPanel from './AlertsPanel'
+import { DEL, deliverFile, elementToPdf } from '@/lib/sales'
+import { useRef } from 'react'
 
 export default function Profile({ onClose }: { onClose: () => void }) {
   const { t, lang } = useLang(); const db = sb()
-  const [user, setUser] = useState<any>(null), [prof, setProf] = useState<any>(null), [buys, setBuys] = useState<any[]>([])
+  const [user, setUser] = useState<any>(null), [prof, setProf] = useState<any>(null), [buys, setBuys] = useState<any[]>([]), [mine, setMine] = useState<{ buys: any[]; owned: any[] } | null>(null), [ptab, setPtab] = useState<'buys' | 'owned'>('buys'), [inv, setInv] = useState<any>(null), [busy, setBusy] = useState(false)
+  const paper = useRef<HTMLDivElement>(null)
   const [name, setName] = useState(''), [msg, setMsg] = useState(''), [code, setCode] = useState(''), [np, setNp] = useState('')
   const [step, setStep] = useState<'idle' | 'cur' | 'new' | 'newcode'>('idle'), [cropFile, setCropFile] = useState<File | null>(null), [upBusy, setUpBusy] = useState(false)
 
@@ -23,6 +26,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
     }
   }, [])
   useEffect(() => { load() }, [load])
+  useEffect(() => { fetch('/api/me/sales').then(r => r.json()).then(j => j.ok && setMine({ buys: j.buys, owned: j.owned })).catch(() => {}) }, [])
 
   const cur = '+' + (user?.phone || ''), newP = '+' + np.replace(/\D/g, '')
   const upload = async (blob: Blob) => {
@@ -69,14 +73,62 @@ export default function Profile({ onClose }: { onClose: () => void }) {
         <button className="btn gold full" disabled={!code} onClick={verifyNew}>{t('verify')}</button></>}
       {msg && <p className="muted" style={{ color: ok ? 'var(--green)' : 'var(--red)' }}>{msg}</p>}
       <AlertsPanel />
-      <h3 style={{ marginTop: 20 }}>{t('purchases')}</h3>
-      {buys.length === 0 ? <div className="empty">{t('no_purchases')}</div> : <div className="bidlist">{buys.map(i => (
-        <div className="person" key={i.id}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '—'}</b>}</div>
-            <div><b>{i.name}</b><br /><small className="muted">{i.vendors?.name} · {i.closed_at ? new Date(i.closed_at).toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</small></div></div>
-          <b>{fmt(i.current_price_fils, lang, i.vendors?.currency)}</b></div>))}</div>}
+      {(() => {
+        const L = (a: string, e: string) => (lang === 'ar' ? a : e)
+        const M = (f: number, c?: string) => fmt(Number(f || 0), lang, c)
+        const fd = (d?: string) => (d ? new Date(d + 'T00:00:00').toLocaleDateString(lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
+        const sum = (a: any[]) => (a || []).reduce((n, x) => n + Number(x.amount), 0)
+        const Thumb = ({ x }: any) => <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{x.photo ? <img src={x.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{x.code || '—'}</b>}</div>
+        const owned = mine?.owned || [], hasOwned = owned.length > 0, tab = hasOwned ? ptab : 'buys'
+        const buyList = mine && mine.buys.length ? mine.buys : null
+        const sharePdf = async (name: string) => { if (!paper.current) return; setBusy(true); try { await deliverFile(await elementToPdf(paper.current), name + '.pdf') } catch { setMsg(L('تعذر إنشاء PDF', 'Could not create the PDF')) } setBusy(false) }
+        return <>
+          <div style={{ display: 'flex', gap: 8, margin: '20px 0 10px' }}>
+            <button className={'btn ' + (tab === 'buys' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setPtab('buys')}>{t('purchases')}</button>
+            {hasOwned && <button className={'btn ' + (tab === 'owned' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setPtab('owned')}>{L('مبيعاتي', 'My sales')} ({owned.length})</button>}</div>
+          {tab === 'buys' && (buyList ? <div className="bidlist">{buyList.map((x: any) => { const paid = sum(x.pays), due = Math.max(0, Number(x.price) - paid), d = DEL[x.del_status] || DEL.none
+            return <button key={x.id} className="person" style={{ width: '100%', textAlign: 'start', cursor: 'pointer' }} onClick={() => setInv(x)}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}><Thumb x={x} />
+                <div style={{ minWidth: 0 }}><b>{x.name}</b><br /><small className="muted">{x.vendor} · {fd(x.sold_on)}</small><br />
+                  <span className={'pill ' + (due === 0 ? 'green' : paid > 0 ? 'gold' : 'red')}>{due === 0 ? L('مدفوعة', 'Paid') : paid > 0 ? L('دفع جزئي', 'Partly paid') : L('بانتظار الدفع', 'Awaiting payment')}</span>{' '}
+                  {x.del_status !== 'none' && <span className={'pill ' + d[2]}>{L(d[0], d[1])}</span>}</div></div>
+              <div style={{ textAlign: 'end' }}><b>{M(x.price, x.currency)}</b><br /><small className="muted">{L('الفاتورة', 'Invoice')} ›</small></div></button> })}</div>
+            : buys.length === 0 ? <div className="empty">{t('no_purchases')}</div> : <div className="bidlist">{buys.map(i => (
+              <div className="person" key={i.id}><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Thumb x={{ photo: i.image_url, code: i.ref_code }} />
+                <div><b>{i.name}</b><br /><small className="muted">{i.vendors?.name} · {i.closed_at ? new Date(i.closed_at).toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</small></div></div>
+                <b>{fmt(i.current_price_fils, lang, i.vendors?.currency)}</b></div>))}</div>)}
+          {tab === 'owned' && <div className="bidlist">{owned.map((x: any) => { const sold = x.stage === 'sold', listing = x.listing_when === 'registration' || sold ? Number(x.listing) : 0, deduct = x.listing_upfront ? 0 : listing, paid = sum(x.pays), rem = Math.max(0, Number(x.net || 0) - paid)
+            const st = !sold ? ({ listed: L('بانتظار المزاد', 'Waiting for auction'), auction: L('في المزاد الآن', 'In auction now'), unsold: L('لم تُبَع', 'Not sold') } as any)[x.stage] || x.stage : Number(x.buyer_paid) < Number(x.price) ? L('بانتظار دفع المشتري', 'Waiting for the buyer to pay') : rem > 0 ? L('بانتظار تحويل مستحقاتك', 'Your payout is pending') : L('تم تحويل مستحقاتك', 'Paid to you')
+            return <div className="card" key={x.id} style={{ boxShadow: 'none', padding: 12 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Thumb x={x} /><div style={{ minWidth: 0 }}><b>{x.name}</b><br /><small className="muted">{x.vendor} · {x.method === 'order' ? t('type_custom') : t('type_standard')}</small></div></div>
+              <div style={{ margin: '8px 0' }}><span className={'pill ' + (sold && rem === 0 ? 'green' : x.stage === 'unsold' ? 'red' : 'gold')}>{st}</span></div>
+              {sold ? <>
+                <div className="kv"><span>{L('سعر البيع', 'Selling price')}</span><b>{M(x.price, x.currency)}</b></div>
+                <div className="kv"><span>{L('العمولة', 'Commission')}</span><b>− {M(x.commission, x.currency)}</b></div>
+                {listing > 0 && <div className="kv"><span>{L('رسوم الإدراج', 'Listing fee')} <small className="muted">{x.listing_upfront ? L('(مدفوعة مسبقاً)', '(paid upfront)') : ''}</small></span><b>{x.listing_upfront ? M(listing, x.currency) : '− ' + M(deduct, x.currency)}</b></div>}
+                <div className="kv"><span><b>{L('صافي مستحقاتك', 'Your net')}</b></span><b>{M(x.net, x.currency)}</b></div>
+                <div className="kv"><span>{L('وصلك', 'Paid to you')}</span><b>{M(paid, x.currency)}</b></div>
+                <div className="kv"><span>{L('المتبقي', 'Remaining')}</span><b>{M(rem, x.currency)}</b></div>
+                {(x.pays || []).map((y: any) => <div className="kv" key={y.no}><span dir="ltr">{y.no} · {fd(y.paid_on)}{y.rev ? ' · ' + L('عكس', 'reversal') : ''}</span><b>{M(y.amount, x.currency)}</b></div>)}</>
+                : <div className="kv"><span>{L('تاريخ الاستلام', 'Date received')}</span><b>{fd(x.received_on)}</b></div>}</div> })}</div>}
+          {inv && <div className="sm-modal sm-docmodal" style={{ zIndex: 90 }} onClick={() => setInv(null)}><div className="sm-sheet wide" onClick={e => e.stopPropagation()}>
+            {(() => { const paid = sum(inv.pays), due = Math.max(0, Number(inv.price) - paid); return <div className="sm-paper" ref={paper} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+              <div className="sm-ptop"><div><div style={{ fontWeight: 700, fontSize: 18 }}>{inv.vendor}</div><div className="pm" dir="ltr">mazadboss.netlify.app/{inv.slug}</div></div>
+                <div style={{ textAlign: 'end' }}><div style={{ fontWeight: 700, fontSize: 17 }}>{L('فاتورة', 'Invoice')}</div><div className="pm">{L('رقم', 'No.')} <b dir="ltr">{inv.inv_no}</b><br />{fd(inv.sold_on)}</div></div></div>
+              <p style={{ margin: '0 0 10px' }}><span className="pm">{L('المشتري', 'Buyer')}</span><br /><b>{inv.buyer}</b></p>
+              <table className="sm-ptable"><thead><tr><th>{L('البيان', 'Item')}</th><th style={{ textAlign: 'end' }}>{L('المبلغ', 'Amount')}</th></tr></thead><tbody>
+                <tr><td><b>{inv.name}</b> · <span dir="ltr">{inv.code}</span></td><td style={{ textAlign: 'end' }}><b>{M(inv.price, inv.currency)}</b></td></tr>
+                <tr className="tot"><td>{L('الإجمالي', 'Total')}</td><td style={{ textAlign: 'end' }}>{M(inv.price, inv.currency)}</td></tr></tbody></table>
+              <div className="pm" style={{ margin: '14px 0 4px' }}>{L('الدفعات', 'Payments')}</div>
+              <table className="sm-ptable"><tbody>{(inv.pays || []).length === 0 && <tr><td className="pm">{L('لا توجد دفعات مسجلة بعد', 'No payments recorded yet')}</td></tr>}
+                {(inv.pays || []).map((y: any) => <tr key={y.no}><td dir="ltr">{y.no}</td><td>{fd(y.paid_on)}{y.rev ? ' · ' + L('عكس', 'reversal') : ''}</td><td style={{ textAlign: 'end' }}>{M(y.amount, inv.currency)}</td></tr>)}
+                <tr className="tot"><td colSpan={2}>{L('المتبقي', 'Balance due')}</td><td style={{ textAlign: 'end' }}>{M(due, inv.currency)}</td></tr></tbody></table>
+              {inv.del_status !== 'none' && <p style={{ marginTop: 12 }}><span className="pm">{L('التوصيل', 'Delivery')}:</span> {L((DEL[inv.del_status] || DEL.none)[0], (DEL[inv.del_status] || DEL.none)[1])}{inv.del_company ? ' · ' + inv.del_company : ''}{inv.del_tracking ? <> · <span dir="ltr">{inv.del_tracking}</span></> : null}</p>}
+              <div className="pm" style={{ marginTop: 18, borderTop: '1px solid #d9d5cb', paddingTop: 8, textAlign: 'center' }} dir="ltr">Mazad Boss · mazadboss.netlify.app</div></div> })()}
+            <div className="sm-docbtns"><button className="btn gold" style={{ flex: 1 }} disabled={busy} onClick={() => sharePdf(inv.inv_no)}>{busy ? '…' : L('مشاركة / حفظ PDF', 'Share / save PDF')}</button></div>
+            <button className="btn light full" onClick={() => setInv(null)}>{t('close_btn')}</button></div></div>}
+        </>
+      })()}
       <button className="btn red full" onClick={signOut}>{t('logout')}</button>
       {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onDone={upload} />}
     </div></div>
