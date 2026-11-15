@@ -16,7 +16,7 @@ function Avatar({ url, name, size }: { url?: string; name?: string; size: string
   )
 }
 
-export default function StreamMode({ items, bidders, sup = [], offers = [], onDecide, vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
+export default function StreamMode({ items, bidders, sup = [], offers = [], onDecide, onSell, vendorName, lang, t, avatarOf, onApprove, onReject, onExit }: any) {
   const item = useMemo(() => {
     const live = items.find((i: any) => i.status === 'live'); if (live) return live
     const paused = items.find((i: any) => i.status === 'paused'); if (paused) return paused
@@ -35,6 +35,19 @@ export default function StreamMode({ items, bidders, sup = [], offers = [], onDe
   const pendingOffers = useMemo(() => !item || !hidden ? [] : offers.filter((o: any) => o.item_id === item.id && o.status === 'pending')
     .sort((a: any, b: any) => b.amount_fils - a.amount_fils), [offers, item?.id, hidden])
   const [busyOffer, setBusyOffer] = useState('')
+  // Sold button: normal auction sells to the current leader; a sell order sells to the highest pending offer.
+  const [sellAsk, setSellAsk] = useState(false), [selling, setSelling] = useState(false)
+  const open = item && (item.status === 'live' || item.status === 'paused')
+  const buyer = !open ? null : hidden ? (pendingOffers[0] ? { name: pendingOffers[0].bidder_name, amount: pendingOffers[0].amount_fils, offer: pendingOffers[0].id } : null)
+    : item.leader_bidder_id ? { name: item.leader_name, amount: item.current_price_fils, offer: '' } : null
+  const sell = async () => {
+    if (!buyer || selling || !onSell) return
+    setSelling(true)
+    try {
+      if (buyer.offer) { const ok = await onDecide?.(buyer.offer, true); if (!ok) return }
+      await onSell(item.id)
+    } finally { setSelling(false); setSellAsk(false) }
+  }
   const decideOffer = async (id: string, ok: boolean) => { if (!onDecide || busyOffer) return; setBusyOffer(id); try { await onDecide(id, ok) } finally { setBusyOffer('') } }
   const sig = item ? `${item.id}:${item.leader_bidder_id}:${item.current_price_fils}:${item.bid_count}` : 'none'
 
@@ -89,7 +102,9 @@ export default function StreamMode({ items, bidders, sup = [], offers = [], onDe
                 </div>))}
               {pendingOffers.length > 5 && <div className="more">+{pendingOffers.length - 5}</div>}
             </div></>) : sold ? (<>
-            <div className="congrats">{t('stream_congrats')}</div>
+            <div className="confetti" key={'cf' + item.id} aria-hidden="true">{[...Array(26)].map((_, i) => <i key={i} style={{ left: `${(i * 39) % 100}%`, animationDelay: `${(i % 9) * 0.12}s`, background: i % 3 ? '#d7b77f' : i % 2 ? '#fff' : '#a77b3c' }} />)}</div>
+            <div className="congrats">{t('stream_congrats')} {item.leader_name}!</div>
+            <div className="wonline">{t('stream_won')} {item.name}</div>
             <div className="winner" key={'s' + sig}><Avatar url={avatarOf(item.leader_bidder_id)} name={item.leader_name} size="clamp(56px,11vw,120px)" /><span>{item.leader_name}</span></div>
             <div className="amount sold">{fmt(item.current_price_fils, lang)}</div>
             {lastSup && <div className="supcard" key={'sc' + lastSup.id}><div className="supin">
@@ -117,6 +132,14 @@ export default function StreamMode({ items, bidders, sup = [], offers = [], onDe
           </>)}
         </>)}
       </div>
+
+      {buyer && !sellAsk && <button className="soldbtn" onClick={() => setSellAsk(true)}>{t('stream_sold')}</button>}
+      {sellAsk && buyer && <div className="sellask" onClick={() => !selling && setSellAsk(false)}><div className="sellbox" onClick={e => e.stopPropagation()}>
+        <div className="selltitle">{t('stream_sell_confirm')}</div>
+        <div className="sellwho">{buyer.name}</div>
+        <div className="sellamt">{fmt(buyer.amount, lang)}</div>
+        <div className="sellbtns"><button className="sellyes" disabled={selling} onClick={sell}>{selling ? '…' : t('stream_sold')}</button><button className="sellno" disabled={selling} onClick={() => setSellAsk(false)}>{t('cancel')}</button></div>
+      </div></div>}
 
       {pending.length > 0 && (
         <div className="reqs"><div className="reqhead">{t('stream_requests')} · {pending.length}</div>
@@ -174,6 +197,20 @@ const CSS = `
 .offamt{font-size:clamp(17px,3.4vw,28px);font-weight:700;color:#e9cf98;white-space:nowrap;font-variant-numeric:tabular-nums}
 .offer .acts button{width:42px;height:42px;font-size:18px}
 .offer .acts button:disabled{opacity:.5}
+.soldbtn{position:absolute;bottom:18px;inset-inline-start:18px;z-index:4;border:0;border-radius:16px;padding:14px 26px;font-size:clamp(17px,2.6vw,22px);font-weight:700;color:#14110b;background:linear-gradient(180deg,#f6e3b8,#d7b77f 55%,#a77b3c);box-shadow:0 0 24px #d7b77f66;cursor:pointer;font-family:inherit}
+.sellask{position:absolute;inset:0;z-index:6;background:#000000b3;display:flex;align-items:center;justify-content:center;padding:20px}
+.sellbox{width:min(420px,100%);background:#14120d;border:1px solid #d7b77f;border-radius:22px;padding:22px;box-shadow:0 0 50px #a77b3c55}
+.selltitle{font-size:14px;letter-spacing:2px;color:#8f8a7e}
+.sellwho{font-size:clamp(26px,6vw,40px);font-weight:700;margin-top:6px}
+.sellamt{font-size:clamp(30px,7vw,48px);font-weight:700;color:#e9cf98;margin:4px 0 16px}
+.sellbtns{display:flex;gap:10px}
+.sellbtns button{flex:1;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit}
+.sellyes{background:#d7b77f;color:#14110b}.sellno{background:#2a2a27;color:#fff}
+.sellbtns button:disabled{opacity:.6}
+.wonline{margin-top:6px;font-size:clamp(14px,2.6vw,22px);color:#cfc7b8;animation:fade 3.2s ease both}
+.confetti{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.confetti i{position:absolute;top:-14px;width:8px;height:14px;border-radius:2px;opacity:0;animation:confetti 2.8s ease-in forwards}
+@keyframes confetti{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(540deg)}}
 .winner.dim{color:#5c584f;font-size:clamp(20px,4vw,40px);animation:none}
 .motiv{margin-top:clamp(14px,3vh,30px);font-size:clamp(14px,2.6vw,26px);color:#d7b77f;animation:fade 3.2s ease both}
 .congrats{font-size:clamp(26px,7vw,70px);color:#d7b77f;font-weight:600;animation:slide 1s both}
