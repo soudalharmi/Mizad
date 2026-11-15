@@ -71,7 +71,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
         <div className="person" key={i.id}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 10, background: '#eadcc5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '📿'}</b>}</div>
+              {i.image_url ? <img src={i.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <b dir="ltr" style={{ fontSize: 11 }}>{i.ref_code || '—'}</b>}</div>
             <div><b>{i.name}</b><br /><small className="muted">{i.vendors?.name} · {i.closed_at ? new Date(i.closed_at).toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-GB') : ''}</small></div></div>
           <b>{fmt(i.current_price_fils, lang, i.vendors?.currency)}</b></div>))}</div>}
       <button className="btn red full" onClick={signOut}>{t('logout')}</button>

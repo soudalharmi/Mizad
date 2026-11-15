@@ -106,7 +106,7 @@ export default function Live({ slug }: { slug: string }) {
         {!item ? <div className="empty">{t('no_item')}</div> : (<>
           <div className="product">
             <div className="product-img">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.ref_code
-              ? <div style={{ textAlign: 'center' }}><div style={{ fontSize: 11, color: '#55574f' }}>{t('ref_code')}</div><b dir="ltr" style={{ fontSize: 20, letterSpacing: 2 }}>{item.ref_code}</b></div> : '📿'}</div>
+              ? <div style={{ textAlign: 'center' }}><div style={{ fontSize: 11, color: '#55574f' }}>{t('ref_code')}</div><b dir="ltr" style={{ fontSize: 20, letterSpacing: 2 }}>{item.ref_code}</b></div> : '—'}</div>
             <div><h3>{item.name}</h3><div className="muted">{item.description}</div>
               {isCustomHidden ? <span className="pill gold" style={{ marginTop: 8, display: 'inline-block' }}>{t('custom_badge')}</span> : <div className="muted" style={{ marginTop: 8 }}>{t('start_price')}: {fmt(item.start_price_fils, lang)}</div>}</div>
           </div>

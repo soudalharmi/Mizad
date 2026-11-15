@@ -1,5 +1,5 @@
 const ar: Record<string, string> = {
-  tagline: 'منصة مزادات المسابيح المباشرة', login: 'تسجيل الدخول', signup: 'إنشاء حساب', logout: 'خروج', email: 'البريد الإلكتروني', password: 'كلمة المرور',
+  tagline: 'منصة إدارة المزادات المباشرة', login: 'تسجيل الدخول', signup: 'إنشاء حساب', logout: 'خروج', email: 'البريد الإلكتروني', password: 'كلمة المرور',
   dashboard: 'لوحة صاحب المزاد', admin: 'لوحة المنصة', home_vendor: 'هل تقدم مزادات مباشرة؟ ابدأ مزادك الآن',
   current_bid: 'أعلى مزايدة', next_bid: 'المزايدة التالية', start_price: 'سعر البداية', increment: 'قيمة الزيادة', leader: 'المزايد الحالي',
   bid_now: 'زايد الآن', bid_self: 'زايد لنفسي', bid_support: 'ادعم المزايد الحالي', confirm_support: 'تأكيد الدعم', confirm_bid: 'تأكيد المزايدة',
@@ -42,6 +42,7 @@ const ar: Record<string, string> = {
   who_support: 'من تريد أن تدعم؟', no_support_cands: 'لا يوجد مزايدون آخرون يمكن دعمهم في هذا المنتج', SUPPORT_LEADER: 'لا يمكن دعم صاحب أعلى مزايدة', NOT_A_BIDDER: 'يمكنك دعم من زايد على هذا المنتج فقط',
   NOTHING_DUE: 'لا يوجد مبلغ مستحق للدفع', PAY_MIN: 'المبلغ أقل من الحد الأدنى للدفع (2 د.إ)',
   sold_tab: 'المباعة', returned_products: 'المنتجات المرجوعة', returned_one: 'مرجوع', no_returned: 'لا توجد منتجات مرجوعة', min_session_fee: 'الحد الأدنى لرسوم الجلسة', min_session_fee_hint: 'إذا كانت رسوم منتجات الجلسة أقل من هذا المبلغ تُضاف رسوم الفرق عند إنهاء الجلسة. اكتب 0 لإيقافه.',
+  home_title: 'أدِر مزاداتك المباشرة بكل سهولة', home_text: 'مِزاد منصة لإدارة المزادات المباشرة لأي نوع من المنتجات: أضف منتجاتك، وافق على المزايدين، تابع المزايدات لحظة بلحظة، وسجّل مبيعاتك ومدفوعاتك في مكان واحد. وللمزايدين: حساب واحد يكفي للمشاركة في مزادات جميع المضيفين.',
   currency: 'العملة', currency_hint: 'عملة مزاداتك. لا يمكن تغييرها بعد وصول أول مزايدة. رسوم المنصة تُدفع دائماً بالدرهم الإماراتي.', CURRENCY_LOCKED: 'لا يمكن تغيير العملة بعد وجود مزايدات', terms_agree: 'بتسجيلك فإنك توافق على الشروط والأحكام. للاطلاع عليها', terms_click: 'اضغط هنا', terms_title: 'الشروط والأحكام', terms_link: 'الشروط والأحكام',
   FEES_UNPAID: 'يجب سداد رسوم الجلسة السابقة قبل بدء جلسة جديدة', PAY_UNAVAILABLE: 'تعذر فتح الدفع الآن، حاول مرة أخرى', fees_due_title: 'رسوم الخدمة المستحقة', fees_due_text: 'سدّد رسوم جلستك السابقة بالكامل لتتمكن من بدء جلسة جديدة.', pay_fees_now: 'ادفع الآن',
   copy_link: 'نسخ رابط المزاد العام', copied: 'تم النسخ', sales_all: 'كل المبيعات', sales_sessions: 'حسب الجلسات', back_btn: 'رجوع', profile_menu_hint: 'الملف والفواتير',
@@ -53,7 +54,7 @@ const ar: Record<string, string> = {
   crop_title: 'اضبط صورتك', crop_hint: 'اسحب لتحريك الصورة، وكبّرها بإصبعين أو بالشريط',
 }
 const en: Record<string, string> = {
-  tagline: 'Live Misbaha auctions', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
+  tagline: 'Live auction management', login: 'Sign in', signup: 'Create account', logout: 'Sign out', email: 'Email', password: 'Password',
   dashboard: 'Host dashboard', admin: 'Platform admin', home_vendor: 'Run live auctions? Start yours now',
   current_bid: 'Highest bid', next_bid: 'Next valid bid', start_price: 'Starting price', increment: 'Bid increment', leader: 'Current bidder',
   bid_now: 'Bid now', bid_self: 'Bid for myself', bid_support: 'Support current bidder', confirm_support: 'Confirm Support', confirm_bid: 'Confirm bid',
@@ -96,6 +97,7 @@ const en: Record<string, string> = {
   who_support: 'Who do you want to support?', no_support_cands: 'There are no other bidders on this product to support', SUPPORT_LEADER: 'You cannot support the highest bidder', NOT_A_BIDDER: 'You can only support someone who has bid on this product',
   NOTHING_DUE: 'There is nothing to pay', PAY_MIN: 'The amount is below the minimum payment (AED 2)',
   sold_tab: 'Sold', returned_products: 'Returned products', returned_one: 'Returned', no_returned: 'No returned products', min_session_fee: 'Minimum fee per session', min_session_fee_hint: 'If a session\'s product fees are below this amount, the difference is added when the session ends. Enter 0 to turn it off.',
+  home_title: 'Run your live auctions with ease', home_text: 'MIZAD helps you manage live auctions for any kind of product: add your products, approve bidders, follow bids in real time, and track your sales and payments in one place. For bidders, one account lets you join every host\'s auctions.',
   currency: 'Currency', currency_hint: 'The currency of your auctions. It cannot be changed after the first bid. Platform fees are always paid in UAE Dirham.', CURRENCY_LOCKED: 'The currency cannot be changed once bids exist', terms_agree: 'By signing up you agree to the Terms and Conditions. To view them', terms_click: 'click here', terms_title: 'Terms and Conditions', terms_link: 'Terms and Conditions',
   FEES_UNPAID: 'Pay the service fees of your previous session before starting a new one', PAY_UNAVAILABLE: 'Payment is unavailable right now, try again', fees_due_title: 'Service fees due', fees_due_text: 'Pay the fees of your previous session in full to start a new session.', pay_fees_now: 'Pay now',
   copy_link: 'Copy public auction link', copied: 'Copied', sales_all: 'All sales', sales_sessions: 'By session', back_btn: 'Back', profile_menu_hint: 'Profile and billing',
