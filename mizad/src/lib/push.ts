@@ -58,3 +58,19 @@ export async function notifyOutbid(prevLeaderBidderId: string, itemId: string) {
     url: `/${v.slug}/live`, tag: 'outbid-' + itemId, dir: lang === 'ar' ? 'rtl' : 'ltr', lang,
   }))
 }
+
+// Tell product owners (matched by phone to a site account) when their product goes to auction and when it is sold.
+// The database hands back each event once only (sm_owner_pending marks it as notified).
+export async function notifyOwners(vendorId: string) {
+  try {
+    const { data } = await admin().rpc('sm_owner_pending', { p_vendor: vendorId })
+    for (const e of (data || []) as any[]) {
+      await notifyUser(e.user_id, lang => {
+        const ar = lang === 'ar'
+        return e.stage === 'sold'
+          ? { title: ar ? 'تم بيع منتجك' : 'Your product is sold', body: `${e.name}: ${fmt(Number(e.price || 0), lang, e.currency)} · ${e.vendor}`, url: '/', tag: 'own-sold-' + e.id, dir: ar ? 'rtl' : 'ltr', lang }
+          : { title: ar ? 'منتجك في المزاد الآن' : 'Your product is on auction now', body: `${e.name} · ${e.vendor}`, url: '/', tag: 'own-live-' + e.id, dir: ar ? 'rtl' : 'ltr', lang }
+      })
+    }
+  } catch (e) { console.error('owner push', e) }
+}

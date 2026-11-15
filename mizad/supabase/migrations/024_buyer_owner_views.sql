@@ -106,3 +106,23 @@ revoke all on function sm_my_owned(text) from public, anon, authenticated;
 revoke all on function sm_my_sales(uuid,text) from public, anon, authenticated;
 revoke all on function sm_buyer_user() from public, anon, authenticated;
 grant execute on function sm_my_buys(uuid), sm_my_owned(text), sm_my_sales(uuid,text) to service_role;
+
+-- Part D: owner push notifications (on auction / sold), each sent once
+alter table sale_products add column if not exists notified text;
+update sale_products set notified=stage where stage in('auction','sold');
+
+create or replace function sm_owner_pending(p_vendor uuid) returns jsonb language sql security definer set search_path=public as $fn$
+with rs as (
+  update sale_products set notified=null
+  where vendor_id=p_vendor and stage in('listed','unsold') and notified is not null
+), up as (
+  update sale_products p set notified=p.stage
+  where p.vendor_id=p_vendor and p.stage in('auction','sold') and p.owner_id is not null and p.notified is distinct from p.stage
+  returning p.id,p.name,p.stage,p.sale_price_fils,p.owner_id,p.vendor_id
+)
+select coalesce(jsonb_agg(jsonb_build_object('user_id',u.id,'id',up.id,'name',up.name,'stage',up.stage,'price',up.sale_price_fils,'vendor',v.name,'currency',v.currency)),'[]'::jsonb)
+from up join sale_owners o on o.id=up.owner_id join vendors v on v.id=up.vendor_id
+join auth.users u on coalesce(o.phone,'')<>'' and regexp_replace(coalesce(u.phone,''),'\D','','g')=regexp_replace(o.phone,'\D','','g')
+$fn$;
+revoke all on function sm_owner_pending(uuid) from public, anon, authenticated;
+grant execute on function sm_owner_pending(uuid) to service_role;
