@@ -142,3 +142,5 @@ a{color:var(--gold)}
 .sm-fseg{display:flex;flex-wrap:wrap;gap:6px}.sm-fseg button{padding:8px 12px;border-radius:12px;background:#f8f7f4;border:1px solid var(--line);font-size:13px}.sm-fseg button.on{background:#252621;color:#fff;border-color:#252621}
 .sm-wa{display:inline-flex;align-items:center;gap:7px;background:#25d366;color:#fff;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
 .sm-code{display:inline-block;font-weight:700;letter-spacing:.5px;background:#f7f0e4;color:#7a5a2b;border-radius:10px;padding:8px 14px}
+.subtrial{position:relative;border:2px solid var(--green);background:#f3faf6;text-align:center}
+.subtrial .save{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-size:12px;font-weight:700;padding:3px 12px;border-radius:99px}

@@ -20,7 +20,7 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
   const shown = quote && quote.months === pick ? quote : plan
   const left = daysLeft(s.sub_until), active = s.status === 'active' && left > 0
   const cur = s.history.find((h: any) => new Date(h.starts_at) <= new Date() && new Date(h.ends_at) > new Date()) || s.history[0]
-  const trial = cur?.kind === 'trial'
+  const onTrial = cur?.kind === 'trial'
   const total = cur ? Math.max(1, (+new Date(s.sub_until || cur.ends_at) - +new Date(cur.starts_at)) / DAY) : 30
   const pct = Math.min(100, Math.max(0, (left / total) * 100))
   const name = (m: number) => m === 12 ? L('سنة', '1 year') : m === 1 ? L('شهر', '1 month') : lang === 'ar' ? `${m} أشهر` : `${m} months`
@@ -37,6 +37,12 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
     if (j.url) { location.href = j.url; return }
     setBusy(false); setErr(j.error === 'CODE_INVALID' ? L('الكود غير صالح', 'Invalid code') : j.error === 'PAY_MIN' ? L('المبلغ أقل من الحد الأدنى للدفع (2 درهم)', 'Amount is below the AED 2 payment minimum') : L('تعذر بدء الدفع', 'Could not start the payment') + (j.detail ? ` (${j.detail})` : ''))
   }
+  const trial = async () => {
+    setBusy(true); setErr('')
+    const j = await (await fetch('/api/vendor/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'trial' }) })).json().catch(() => ({}))
+    if (j.ok) { location.href = '/dashboard'; return }
+    setBusy(false); setErr(j.error === 'TRIAL_USED' ? L('استخدمت التجربة المجانية من قبل. اختر باقة للمتابعة.', 'You already used the free trial. Choose a plan to continue.') : L('تعذر بدء التجربة', 'Could not start the trial'))
+  }
   const label = (h: any) => ({ paid: L('اشتراك مدفوع', 'Paid'), trial: L('تجربة مجانية', 'Free trial'), admin: L('مُنح من الإدارة', 'Given by admin'), free: L('مجاني بكود خصم', 'Free with code') } as any)[h.kind] || h.kind
   return (
     <div className="subwrap">
@@ -44,7 +50,7 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
         {onClose && <button className="btn light" style={{ float: lang === 'ar' ? 'left' : 'right', padding: '4px 10px' }} onClick={onClose}>✕</button>}
         <span className="muted">{L('اشتراكك', 'Your subscription')}</span>
         {active ? <>
-          <h2 style={{ margin: '4px 0 2px' }}>{trial ? L('تجربة مجانية', 'Free trial') : L('اشتراك فعّال', 'Active')}</h2>
+          <h2 style={{ margin: '4px 0 2px' }}>{onTrial ? L('تجربة مجانية', 'Free trial') : L('اشتراك فعّال', 'Active')}</h2>
           <div className="subdays"><b>{left}</b><span>{left === 1 ? L('يوم متبقٍ', 'day left') : L('يوماً متبقياً', 'days left')}</span></div>
           <div className="subbar"><i style={{ width: pct + '%' }} /></div>
           <div className="row" style={{ fontSize: 13 }}><span className="muted">{L('ينتهي في', 'Ends on')}</span><b>{fd(s.sub_until)}</b></div>
@@ -54,6 +60,13 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
           <p className="muted" style={{ margin: 0 }}>{s.status === 'pending_activation' ? L('اشترك لتفعيل صفحة مزادك ولوحة التحكم.', 'Subscribe to activate your auction page and dashboard.') : L('لوحة التحكم وصفحة مزادك متوقفتان حتى التجديد. بياناتك محفوظة كما هي.', 'Your dashboard and auction page are paused until you renew. Your data is kept as it is.')}</p>
         </>}
       </div>
+
+      {!active && s.trial_available && <div className="card subtrial">
+        <span className="save">{L('مجاناً', 'Free')}</span>
+        <h3 style={{ margin: '0 0 4px' }}>{L(`جرّب مجاناً ${s.trial_days} أيام`, `Try it free for ${s.trial_days} days`)}</h3>
+        <p className="muted" style={{ margin: '0 0 12px' }}>{L('كل المزايا متاحة خلال التجربة، بدون دفع. بعدها تختار الباقة التي تناسبك.', 'Every feature is open during the trial, no payment needed. Afterwards you pick the plan that suits you.')}</p>
+        <button className="btn gold full" style={{ marginTop: 0 }} disabled={busy} onClick={trial}>{busy ? '…' : L('ابدأ التجربة المجانية', 'Start the free trial')}</button>
+        <div className="muted" style={{ textAlign: 'center', marginTop: 10, fontSize: 12 }}>{L('أو اختر باقة مدفوعة بالأسفل', 'or choose a paid plan below')}</div></div>}
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>{active ? L('تمديد الاشتراك', 'Extend your subscription') : L('اختر الباقة', 'Choose a plan')}</h3>
