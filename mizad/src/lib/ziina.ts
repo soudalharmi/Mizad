@@ -30,6 +30,8 @@ export async function settle(row: any): Promise<boolean> {
   if (it.status !== 'completed' || Number(it.amount) !== Number(row.amount_fils)) return false
   const { error } = row.kind === 'invoice'
     ? await db.rpc('mark_invoice_paid', { p_invoice: row.invoice_id, p_ref: row.ziina_id })
+    : row.kind === 'subscription'
+    ? await db.rpc('apply_subscription', { p_vendor: row.vendor_id, p_months: row.months, p_days: 0, p_list: row.list_fils || row.amount_fils, p_amount: row.amount_fils, p_ref: row.ziina_id, p_code_id: row.code_id || null, p_kind: 'paid' })
     : await db.rpc('activate_vendor', { p_vendor: row.vendor_id, p_amount: row.amount_fils, p_ref: row.ziina_id })
   if (error) throw new Error('SETTLE_FAILED ' + error.message)
   await db.from('payments').update({ provider: 'ziina' }).eq('provider_ref', row.ziina_id)

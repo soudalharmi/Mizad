@@ -23,5 +23,12 @@ export default async function Page() {
     return { id: v.id, name: v.name, slug: v.slug, phone: v.phone, status: v.status, email: data?.user?.email || '', amount_fils: due[v.id] }
   }))
   outstanding.sort((a, b) => b.amount_fils - a.amount_fils)
-  return <AdminClient overview={overview} settings={settings} outstanding={outstanding} />
+  const [pl, cd, sv, rev] = await Promise.all([
+    db.from('sub_plans').select('*').order('months'),
+    db.from('discount_codes').select('*').order('created_at', { ascending: false }),
+    db.from('vendors').select('id,sub_until'),
+    db.from('payments').select('amount_fils').eq('kind', 'subscription').eq('status', 'captured')])
+  const subs = Object.fromEntries((sv.data || []).map((x: any) => [x.id, x.sub_until]))
+  const subRev = (rev.data || []).reduce((n: number, x: any) => n + Number(x.amount_fils), 0)
+  return <AdminClient overview={overview} settings={settings} outstanding={outstanding} plans={pl.data || []} codes={cd.data || []} subs={subs} subRev={subRev} />
 }

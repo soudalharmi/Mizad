@@ -11,6 +11,7 @@ import { CURRENCIES, currencyLabel } from '@/lib/currency'
 import StreamMode from '@/components/StreamMode'
 import HostProfile from '@/components/HostProfile'
 import SalesManager from '@/components/SalesManager'
+import Subscription, { daysLeft } from '@/components/Subscription'
 import Link from 'next/link'
 
 const genCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint8Array(5)); return 'MZ-' + Array.from(r, x => A[x % A.length]).join('') }
@@ -33,7 +34,7 @@ export default function Dash() {
   const [form, setForm] = useState<any>({ name: '', description: '', start: '', inc: '', oname: '', ophone: '', asked: '', cat: '' }), [file, setFile] = useState<File | null>(null), [mode, setMode] = useState<'photo' | 'code'>('photo'), [code, setCode] = useState(() => genCode())
   const [slug, setSlug] = useState(''), [vname, setVname] = useState(''), [vcur, setVcur] = useState('AED'), [vphone, setVphone] = useState(''), [showInv, setShowInv] = useState(false)
   const [secrets, setSecrets] = useState<Record<string, any>>({}), [offers, setOffers] = useState<any[]>([]), [atype, setAtype] = useState<'standard' | 'custom'>('standard')
-  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({}), [smView, setSmView] = useState('home'), [smSig, setSmSig] = useState(0)
+  const [sessions, setSessions] = useState<any[]>([]), [parts, setParts] = useState<Record<string, number>>({}), [streaming, setStreaming] = useState(false), [avatars, setAvatars] = useState<Record<string, string>>({}), [sTitle, setSTitle] = useState(''), [priv, setPriv] = useState<Record<string, any>>({}), [bq, setBq] = useState(''), [sq, setSq] = useState(''), [sf, setSf] = useState('all'), [openBids, setOpenBids] = useState<Record<string, boolean>>({}), [editP, setEditP] = useState<any>(null), [showProf, setShowProf] = useState(false), [cf, setCf] = useState('all'), [menuOpen, setMenuOpen] = useState(false), [salesView, setSalesView] = useState<'all' | 'sessions'>('all'), [gf, setGf] = useState('all'), [grpEdit, setGrpEdit] = useState<any>(null), [openSess, setOpenSess] = useState<Record<string, boolean>>({}), [smView, setSmView] = useState('hub'), [smSig, setSmSig] = useState(0)
   const itemsRef = useRef<any[]>([])
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 9000) }
 
@@ -141,8 +142,9 @@ export default function Dash() {
     <label>{t('currency')}</label><select value={vcur} onChange={e => setVcur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{currencyLabel(c, lang)}</option>)}</select>
     <div className="notice" style={{ marginTop: 8, fontSize: 13 }}>⚠ {t('currency_final')}</div>
     <button className="btn gold full" onClick={createVendor}>{t('create_page')}</button></div>{toast && <div className="toast">{toast}</div>}</main>)
-  if (v.status === 'pending_activation') return (<main className="wrap" style={{ maxWidth: 460 }}><div className="card"><h2>{t('activate_title')}</h2>
-    <p className="muted">{t('activate_text')}</p><button className="btn gold full" onClick={() => pay('activation')}>{t('activate_btn')}</button></div></main>)
+  if (v.status === 'pending_activation' || v.status === 'expired' || (v.status === 'active' && v.sub_until && daysLeft(v.sub_until) === 0 && +new Date(v.sub_until) < Date.now()))
+    return (<main className="wrap"><Subscription lang={lang} locked />{toast && <div className="toast">{toast}</div>}
+      <button className="btn light full" style={{ maxWidth: 620, display: 'block', margin: '18px auto 0' }} onClick={logout}>{t('logout')}</button></main>)
   if (v.status === 'suspended') return <main className="wrap"><div className="notice">{t('suspended')}</div></main>
 
   const liveSession = sessions.find(x => x.status === 'live')
@@ -171,6 +173,7 @@ export default function Dash() {
 
   return (
     <main className="wrap">
+      {v.sub_until && daysLeft(v.sub_until) <= 7 && tab !== 'billing' && <div className="subbanner"><span>{lang === 'ar' ? `اشتراكك ينتهي خلال ${daysLeft(v.sub_until)} ${daysLeft(v.sub_until) === 1 ? 'يوم' : 'أيام'}` : `Your subscription ends in ${daysLeft(v.sub_until)} day${daysLeft(v.sub_until) === 1 ? '' : 's'}`}</span><button className="btn gold" style={{ padding: '7px 12px' }} onClick={() => { setTab('billing'); window.scrollTo(0, 0) }}>{lang === 'ar' ? 'جدّد الآن' : 'Renew now'}</button></div>}
       <div className="row section" style={{ gap: 10, alignItems: 'center' }}>
         <button onClick={() => setMenuOpen(true)} aria-label={t('host_profile')} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, textAlign: 'start', background: 'none', padding: 0 }}>
           <span style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: '#eadcc5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flexShrink: 0, boxShadow: '0 0 0 2px #a77b3c66' }}>
@@ -294,6 +297,7 @@ export default function Dash() {
       {tab === 'sales' && <SalesManager v={v} lang={lang} say={say} view={smView} setView={setSmView} sig={String(smSig)} onChanged={() => { setSmSig(x => x + 1); load() }} goProducts={() => { setTab('products'); window.scrollTo(0, 0) }} sessions={sessionsView} />}
 
       {tab === 'billing' && <button className="btn light section" onClick={() => setTab('auction')}>{lang === 'ar' ? '→' : '←'} {t('back_btn')}</button>}
+      {tab === 'billing' && <div style={{ marginBottom: 18 }}><Subscription lang={lang} /></div>}
       {tab === 'billing' && <div className="grid">
         <div className="card" style={{ textAlign: 'center' }}>
           <span className="muted">{t('outstanding')}</span>
@@ -304,7 +308,7 @@ export default function Dash() {
       {streaming && <StreamMode items={items} bidders={bidders} sup={sup} offers={offers} onDecide={decide} onSell={(id: string) => act('close', id)} vendorName={v.name} lang={lang} t={t} avatarOf={(bidderId: string) => avatars[bidders.find((x: any) => x.id === bidderId)?.user_id]} onApprove={(id: string) => setStatus(id, 'approved')} onReject={(id: string) => setStatus(id, 'rejected')} onExit={() => setStreaming(false)} />}
       <button className="btn red full" style={{ marginTop: 28 }} onClick={logout}>{t('logout')}</button>
       <div style={{ height: 96 }} />
-      <nav className="bottomnav" aria-label="tabs">{['auction', 'products', 'bidders', 'sales'].map(k => <button key={k} className={'bn-item' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>
+      <nav className="bottomnav" aria-label="tabs">{['auction', 'products', 'bidders', 'sales'].map(k => <button key={k} className={'bn-item' + (tab === k ? ' active' : '')} onClick={() => { if (k === 'sales') setSmView('hub'); setTab(k) }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={tab === k ? 2 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{TAB_ICONS[k]}</svg>
         <span>{t('tab_' + k)}</span>{tab === k && <i className="bn-dot" />}
         {(() => { const n = k === 'bidders' ? pendingCount : k === 'auction' ? offerCount : 0; return n > 0 && <span className="bn-badge">{n}</span> })()}</button>)}</nav>

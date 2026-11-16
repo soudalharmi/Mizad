@@ -13,8 +13,11 @@ type Props = { v: any; lang: 'ar' | 'en'; say: (m: string) => void; view: string
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
 const dAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
 const digits = (x?: string) => String(x || '').replace(/\D/g, '')
-const F0 = { range: 'all', from: '', to: '', method: '', cat: '', owner: '', buyer: '', pay: '', del: '', status: '', q: '' }
-const R0 = { own: false, ophone: '', oname: '', name: '', cat: '', desc: '', asked: '', method: 'order', start: '', inc: '', date: '', notes: '', upfront: false }
+const F0 = { range: 'all', from: '', to: '', method: '', cat: '', owner: '', buyer: '', pay: '', del: '', status: '', settle: '', q: '' }
+const R0 = { touched: false, own: false, ophone: '', oname: '', name: '', cat: '', desc: '', asked: '', method: 'order', start: '', inc: '', date: '', notes: '', upfront: false }
+
+const ICN: Record<string, string> = { home: 'M4 20V10M10 20V4M16 20v-7M22 20H2', table: 'M3 4h18v16H3zM3 9h18M9 9v11', receive: 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3', owners: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8', delivery: 'M2 6h11v10H2zM13 10h4l4 4v2h-8M6 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM17 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4z', docs: 'M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8', rules: 'M7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM17 14a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM19 5 5 19', sessions: 'M3 5h18v16H3zM8 3v4M16 3v4M3 10h18', search: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-3.5-3.5', filter: 'M4 6h16M7 12h10M10 18h4', back: 'm9 6 6 6-6 6' }
+const Ic = ({ k, s = 24 }: { k: string; s?: number }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICN[k]} /></svg>
 
 export default function SalesManager({ v, lang, say, view, setView, sig, onChanged, goProducts, sessions }: Props) {
   const db = sb()
@@ -23,7 +26,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   const cur = v.currency || 'AED'
   const [prods, setProds] = useState<any[]>([]), [owners, setOwners] = useState<any[]>([]), [pays, setPays] = useState<any[]>([]), [rules, setRules] = useState<any>(DEFAULT_RULES), [rlog, setRlog] = useState<any[]>([])
   const [loaded, setLoaded] = useState(false), [setup, setSetup] = useState(false), [sel, setSel] = useState<string | null>(null), [plog, setPlog] = useState<any[]>([])
-  const [F, setF] = useState<any>(F0), [R, setR] = useState<any>({ ...R0, date: today() }), [files, setFiles] = useState<File[]>([]), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  const [nextNo, setNextNo] = useState(1), [sheet, setSheet] = useState(false), [from, setFrom] = useState('table'), [F, setF] = useState<any>(F0), [R, setR] = useState<any>({ ...R0, date: today() }), [files, setFiles] = useState<File[]>([]), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [modal, setModal] = useState<any>(null), [mf, setMf] = useState<any>({}), [doc, setDoc] = useState<any>(null), [rf, setRf] = useState<any>(null), [calc, setCalc] = useState<any>({ m: 'order', p: '1500' }), [month, setMonth] = useState(today().slice(0, 7))
   const paper = useRef<HTMLDivElement>(null)
 
@@ -32,6 +35,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     const [a, b, c, d, e] = await Promise.all([q('sale_products').order('created_at', { ascending: false }).limit(5000), q('sale_owners').order('name'), q('sale_payments').order('created_at').limit(20000), db.from('sales_rules').select('*').eq('vendor_id', v.id).maybeSingle(), q('sales_rules_log').order('created_at', { ascending: false }).limit(50)])
     if (a.error) { setSetup(true); setLoaded(true); return }
     setSetup(false); setProds(a.data || []); setOwners(b.data || []); setPays(c.data || []); setRules(d.data || DEFAULT_RULES); setRlog(e.data || []); setLoaded(true)
+    const { data: cn } = await db.from('sale_counters').select('n').eq('vendor_id', v.id).eq('kind', 'code').maybeSingle(); setNextNo(Number(cn?.n || 0) + 1)
   }, [v.id])
   useEffect(() => { load() }, [load, sig])
   useEffect(() => { if (!sel) return setPlog([]); db.from('sale_log').select('*').eq('product_id', sel).order('id', { ascending: false }).limit(300).then((r: any) => setPlog(r.data || [])) }, [sel, prods, pays])
@@ -54,8 +58,8 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   }
   const E = (j: any) => { const x = ERR[j?.error] || ERR.GENERIC; return L(x[0], x[1]) + (j?.detail ? ' (' + j.detail + ')' : '') }
   const call = async (body: any) => { try { return await (await fetch('/api/vendor/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json() } catch { return { error: 'GENERIC' } } }
-  const go = (x: string) => { setView(x); setErr(''); window.scrollTo(0, 0) }
-  const open = (id: string) => { setSel(id); go('product') }
+  const go = (x: string) => { if (x !== 'product' && x !== 'hub' && view !== 'product') setFrom(x); setView(x); setErr(''); setSheet(false); window.scrollTo(0, 0) }
+  const open = (id: string) => { if (view !== 'product') setFrom(view === 'hub' ? 'table' : view); setSel(id); setView('product'); setErr(''); window.scrollTo(0, 0) }
   const close = () => { setModal(null); setMf({}); setErr('') }
   const pillOf = (x: [string, string, string]) => <span className={'pill ' + x[2]}>{L(x[0], x[1])}</span>
   const lifePill = (p: any) => pillOf(LIFE[life(p)] || LIFE.listed)
@@ -76,7 +80,8 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       if (from && d < from) return false; if (to && d > to) return false
       if (F.method && p.method !== F.method) return false; if (F.cat && p.category !== F.cat) return false; if (F.owner && p.owner_id !== F.owner) return false
       if (F.buyer && !String(p.buyer_name || '').toLowerCase().includes(F.buyer.toLowerCase())) return false
-      if (F.pay && (!f.sold || (F.pay === 'paid' ? f.bDue > 0 : F.pay === 'partial' ? !(f.bPaid > 0 && f.bDue > 0) : f.bPaid > 0))) return false
+      if (F.settle === 'due' && !(f.sold && p.owner_id && f.oDue > 0)) return false
+      if (F.pay && (!f.sold || (F.pay === 'due' ? f.bDue <= 0 : F.pay === 'paid' ? f.bDue > 0 : F.pay === 'partial' ? !(f.bPaid > 0 && f.bDue > 0) : f.bPaid > 0))) return false
       if (F.del && (!f.sold || p.del_status !== F.del)) return false
       if (F.status && life(p) !== F.status) return false
       if (q) { const hay = [p.name, p.code, o?.name, p.buyer_name].join(' ').toLowerCase(); const ph = digits(o?.phone) + ' ' + digits(p.buyer_phone); if (!hay.includes(q) && !(qd.length > 2 && ph.includes(qd))) return false }
@@ -90,29 +95,54 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   }
   const Tile = ({ l, val, hl }: any) => <div className={'sm-tile' + (hl ? ' hl' : '')}><span>{l}</span><b>{val}</b></div>
   const Sel = ({ k, label, children }: any) => <div><label>{label}</label><select value={F[k]} onChange={e => setF({ ...F, [k]: e.target.value })}>{children}</select></div>
-  const filterBar = (search: boolean) => <div className="card section">
-    <div className="sm-seg">{[['all', L('الكل', 'All time')], ['today', L('اليوم', 'Today')], ['week', L('هذا الأسبوع', 'This week')], ['month', L('هذا الشهر', 'This month')], ['custom', L('فترة محددة', 'Custom range')]].map(([k, t]) => <button key={k} className={F.range === k ? 'on' : ''} onClick={() => setF({ ...F, range: k })}>{t}</button>)}</div>
-    {F.range === 'custom' && <div className="sm-filters"><div><label>{L('من', 'From')}</label><input type="date" value={F.from} onChange={e => setF({ ...F, from: e.target.value })} /></div><div><label>{L('إلى', 'To')}</label><input type="date" value={F.to} onChange={e => setF({ ...F, to: e.target.value })} /></div></div>}
-    <div className="sm-filters">
-      {search && <div style={{ gridColumn: '1/-1' }}><label>{L('بحث: اسم القطعة، الرمز، صاحب القطعة، المشتري أو رقم الهاتف', 'Search: product, code, owner, buyer or phone')}</label><input value={F.q} onChange={e => setF({ ...F, q: e.target.value })} /></div>}
-      <Sel k="method" label={L('طريقة البيع', 'Sale method')}><option value="">{L('الكل', 'All')}</option><option value="order">{methodName('order')}</option><option value="regular">{methodName('regular')}</option></Sel>
-      <Sel k="cat" label={L('الفئة', 'Category')}><option value="">{L('الكل', 'All')}</option>{cats.map(c => <option key={c} value={c}>{c}</option>)}</Sel>
-      <Sel k="owner" label={L('صاحب القطعة', 'Product owner')}><option value="">{L('الكل', 'All')}</option>{owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</Sel>
-      <div><label>{L('المشتري', 'Buyer')}</label><input value={F.buyer} onChange={e => setF({ ...F, buyer: e.target.value })} /></div>
-      <Sel k="pay" label={L('تحصيل المشتري', 'Buyer payment')}><option value="">{L('الكل', 'All')}</option><option value="paid">{L('تم التحصيل', 'Collected')}</option><option value="partial">{L('جزئي', 'Partial')}</option><option value="unpaid">{L('لم يُحصَّل', 'Not collected')}</option></Sel>
-      <Sel k="del" label={L('التوصيل', 'Delivery')}><option value="">{L('الكل', 'All')}</option>{Object.keys(DEL).map(k => <option key={k} value={k}>{L(DEL[k][0], DEL[k][1])}</option>)}</Sel>
+  const RANGES: [string, string][] = [['all', L('كل الوقت', 'All time')], ['today', L('اليوم', 'Today')], ['week', L('هذا الأسبوع', 'This week')], ['month', L('هذا الشهر', 'This month')], ['custom', L('فترة محددة', 'Custom range')]]
+  const PAYS: Record<string, [string, string]> = { due: ['بانتظار التحصيل', 'To collect'], unpaid: ['لم يُحصَّل', 'Not collected'], partial: ['دفع جزئي', 'Partial'], paid: ['تم التحصيل', 'Collected'] }
+  const activeF = (): [string, string][] => { const a: [string, string][] = []
+    if (F.range !== 'all') a.push(['range', F.range === 'custom' ? `${F.from || '…'} → ${F.to || '…'}` : (RANGES.find(r => r[0] === F.range) || ['', ''])[1]])
+    if (F.pay) a.push(['pay', L(...PAYS[F.pay])]); if (F.settle) a.push(['settle', L('مستحق للملّاك', 'Owed to owners')])
+    if (F.method) a.push(['method', methodName(F.method)]); if (F.status) a.push(['status', L(LIFE[F.status][0], LIFE[F.status][1])])
+    if (F.del) a.push(['del', L(DEL[F.del][0], DEL[F.del][1])]); if (F.cat) a.push(['cat', F.cat]); if (F.owner) a.push(['owner', O(F.owner)?.name || '—'])
+    if (F.buyer) a.push(['buyer', L('المشتري: ', 'Buyer: ') + F.buyer]); return a }
+  const clearF = (k: string) => setF(k === 'range' ? { ...F, range: 'all', from: '', to: '' } : { ...F, [k]: '' })
+  const filterBar = (search: boolean) => { const act = activeF(), n = act.length
+    const btn = <button className={'sm-fbtn' + (search ? '' : ' wide')} onClick={() => setSheet(true)} aria-label={L('تصفية', 'Filters')}><Ic k="filter" s={21} />{!search && L('تصفية', 'Filter')}{n > 0 && <i>{n}</i>}</button>
+    return <div className="section sm-fwrap">
+      {search ? <div className="sm-sbar"><label className="sm-sbox"><Ic k="search" s={20} /><input value={F.q} onChange={e => setF({ ...F, q: e.target.value })} placeholder={L('ابحث بالاسم، الرمز، المشتري أو الهاتف', 'Search name, code, buyer or phone')} /></label>{btn}</div>
+        : <div className="row"><span className="muted">{n ? L('النتائج مصفّاة', 'Filtered results') : L('كل الفترات', 'All time')}</span>{btn}</div>}
+      {n > 0 && <div className="sm-achips">{act.map(([k, t]) => <button key={k} className="sm-achip" onClick={() => clearF(k)}>{t} ✕</button>)}</div>}</div> }
+  const Seg = ({ k, opts }: { k: string; opts: [string, string][] }) => <div className="sm-fseg">{opts.map(([val, t]) => <button key={val} className={F[k] === val ? 'on' : ''} onClick={() => setF({ ...F, [k]: val })}>{t}</button>)}</div>
+  const filterSheet = () => <div className="sm-modal sm-bottom" onClick={() => setSheet(false)}><div className="sm-sheet" onClick={e => e.stopPropagation()}>
+    <div className="sm-grab" /><div className="row" style={{ marginBottom: 10 }}><h3 style={{ margin: 0 }}>{L('تصفية', 'Filters')}</h3><button className="btn light" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setF({ ...F0, q: F.q })}>{L('مسح الكل', 'Clear all')}</button></div>
+    <div className="sm-fsec"><span>{L('الفترة', 'Period')}</span><Seg k="range" opts={RANGES} />
+      {F.range === 'custom' && <div className="sm-g2"><div><label>{L('من', 'From')}</label><input type="date" value={F.from} onChange={e => setF({ ...F, from: e.target.value })} /></div><div><label>{L('إلى', 'To')}</label><input type="date" value={F.to} onChange={e => setF({ ...F, to: e.target.value })} /></div></div>}</div>
+    <div className="sm-fsec"><span>{L('تحصيل المشتري', 'Buyer payment')}</span><Seg k="pay" opts={[['', L('الكل', 'All')], ...Object.keys(PAYS).map(k => [k, L(...PAYS[k])] as [string, string])]} /></div>
+    <div className="sm-fsec"><span>{L('مستحقات الملّاك', 'Owner settlement')}</span><Seg k="settle" opts={[['', L('الكل', 'All')], ['due', L('لم تُدفع بعد', 'Not paid yet')]]} /></div>
+    <div className="sm-fsec"><span>{L('نوع المزاد', 'Auction type')}</span><Seg k="method" opts={[['', L('الكل', 'All')], ['order', methodName('order')], ['regular', methodName('regular')]]} /></div>
+    <div className="sm-g2">
       <Sel k="status" label={L('حالة القطعة', 'Product status')}><option value="">{L('الكل', 'All')}</option>{Object.keys(LIFE).map(k => <option key={k} value={k}>{L(LIFE[k][0], LIFE[k][1])}</option>)}</Sel>
-    </div></div>
+      <Sel k="del" label={L('التوصيل', 'Delivery')}><option value="">{L('الكل', 'All')}</option>{Object.keys(DEL).map(k => <option key={k} value={k}>{L(DEL[k][0], DEL[k][1])}</option>)}</Sel>
+      <Sel k="cat" label={L('الفئة', 'Category')}><option value="">{L('الكل', 'All')}</option>{cats.map(c => <option key={c} value={c}>{c}</option>)}</Sel>
+      <Sel k="owner" label={L('صاحب القطعة', 'Product owner')}><option value="">{L('الكل', 'All')}</option>{owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</Sel></div>
+    <label>{L('المشتري', 'Buyer')}</label><input value={F.buyer} onChange={e => setF({ ...F, buyer: e.target.value })} />
+    <button className="btn gold full" onClick={() => setSheet(false)}>{L('عرض', 'Show')} {filtered().length} {L('قطعة', 'products')}</button></div></div>
+  const waBtn = (p: any, k: string) => { const f = fin(p), o = O(p.owner_id), site = typeof location !== 'undefined' ? location.host : 'mazadboss.netlify.app'; let to = '', msg = '', who = ''
+    if ((k === 'await_buyer' || k === 'await_delivery') && p.buyer_phone) { to = p.buyer_phone; who = L('المشتري', 'buyer')
+      msg = k === 'await_buyer' ? L(`مرحباً ${p.buyer_name || ''}، هذه فاتورتك من ${v.name}\nالقطعة: ${p.name} (${p.code})\nرقم الفاتورة: ${p.inv_no || ''}\nالمبلغ المتبقي: ${M(f.bDue)}\nتجد الفاتورة في حسابك: ${site} ← الملف الشخصي ← مشترياتي`, `Hello ${p.buyer_name || ''}, here is your invoice from ${v.name}\nProduct: ${p.name} (${p.code})\nInvoice: ${p.inv_no || ''}\nBalance due: ${M(f.bDue)}\nYour invoice is in your account: ${site} → Profile → Purchases`)
+        : L(`مرحباً ${p.buyer_name || ''}، بخصوص توصيل ${p.name} (${p.code})\nرقم الفاتورة: ${p.inv_no || ''}\nنرجو تأكيد عنوان التوصيل.`, `Hello ${p.buyer_name || ''}, about delivering ${p.name} (${p.code})\nInvoice: ${p.inv_no || ''}\nPlease confirm your delivery address.`) }
+    else if ((k === 'await_owner' || (k === 'unsold' && f.feeOwed > 0)) && o?.phone) { to = o.phone; who = L('صاحب القطعة', 'owner')
+      msg = k === 'await_owner' ? L(`مرحباً ${o.name}، بِيعت قطعتك ${p.name} (${p.code}) بمبلغ ${M(f.price)}\nصافي مستحقاتك: ${M(f.net)} · المتبقي: ${M(f.oDue)}\nتجد التفاصيل في حسابك: ${site} ← الملف الشخصي ← مبيعاتي`, `Hello ${o.name}, your product ${p.name} (${p.code}) sold for ${M(f.price)}\nYour net: ${M(f.net)} · remaining: ${M(f.oDue)}\nDetails are in your account: ${site} → Profile → My sales`)
+        : L(`مرحباً ${o.name}، لم تُبَع قطعتك ${p.name} (${p.code}).\nرسوم الإدراج المستحقة: ${M(f.feeOwed)}`, `Hello ${o.name}, your product ${p.name} (${p.code}) did not sell.\nListing fee due: ${M(f.feeOwed)}`) }
+    if (!to) return null
+    return <a className="sm-wa" href={`https://wa.me/${digits(to)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8.2 19z" /><path d="M9 9.5c.3 1.6 1.9 3.5 3.8 4.3l1.2-1.1 1.8.9c-.2.9-1 1.6-2 1.5C10.7 14.8 8.6 12.5 8.4 10c0-1 .6-1.7 1.4-1.9l.9 1.8z" fill="currentColor" stroke="none" /></svg>{L('واتساب ', 'WhatsApp ')}{who}</a> }
 
   // ---------- actions ----------
   const uploadAll = async () => { const urls: string[] = []; for (const f of files.slice(0, 6)) { const c = await compressImage(f); const p = `${v.id}/${crypto.randomUUID()}.${c.ext}`; const { error } = await db.storage.from('products').upload(p, c.blob, { contentType: c.type, cacheControl: '31536000' }); if (!error) urls.push(db.storage.from('products').getPublicUrl(p).data.publicUrl) } return urls }
   const receive = async (more: boolean) => {
-    if (!R.name.trim()) return setErr(L('اكتب اسم القطعة', 'Enter the product name'))
     if (!R.own && (!R.oname.trim() || digits(R.ophone).length < 8)) return setErr(E({ error: 'OWNER_REQUIRED' }))
     if (!R.start || aedToFils(R.start) <= 0 || !R.inc || aedToFils(R.inc) < 200) return setErr(E({ error: 'BAD_PRICE' }))
     setBusy(true); setErr('')
     const photos = await uploadAll()
-    const j = await call({ action: 'receive', data: { own: R.own, owner_name: R.oname.trim(), owner_phone: R.ophone, name: R.name.trim(), category: R.cat.trim(), description: R.desc, asked_fils: R.asked ? aedToFils(R.asked) : null, method: R.method, start_fils: aedToFils(R.start), inc_fils: aedToFils(R.inc), received_on: R.date || today(), notes: R.notes, upfront: R.upfront, photos } })
+    const j = await call({ action: 'receive', data: { own: R.own, owner_name: R.oname.trim(), owner_phone: R.ophone, name: R.name.trim(), category: R.cat.trim(), description: R.desc, asked_fils: R.method === 'order' && R.asked ? aedToFils(R.asked) : null, method: R.method, start_fils: aedToFils(R.start), inc_fils: aedToFils(R.inc), received_on: R.date || today(), notes: R.notes, upfront: R.upfront, photos } })
     setBusy(false); if (j.error) return setErr(E(j))
     await load(); onChanged(); setFiles([])
     say(L('تم الاستلام وأُضيفت القطعة إلى قائمة المنتجات · إيصال ', 'Received and added to the Products queue · receipt ') + j.result.rr_no)
@@ -141,7 +171,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   const openPay = (p: any, kind: 'buyer' | 'owner') => { const f = fin(p); setMf({ amt: String((kind === 'buyer' ? f.bDue : f.oDue) / 100), method: rules.pay_methods?.[0] || 'Cash', date: today(), ref: '', notes: '', file: null }); setErr(''); setModal({ t: 'pay', id: p.id, kind }) }
   const openDel = (p: any) => { setMf({ status: p.del_status, address: p.del_address || '', company: p.del_company || '', tracking: p.del_tracking || '', fee: String(Number(p.del_fee_fils || 0) / 100), payer: p.del_payer }); setErr(''); setModal({ t: 'del', id: p.id }) }
   const exportCsv = async () => {
-    const rows: any[][] = [[L('الرمز', 'Code'), L('القطعة', 'Product'), L('الفئة', 'Category'), L('صاحب القطعة', 'Owner'), L('هاتف المالك', 'Owner phone'), L('طريقة البيع', 'Method'), L('المطلوب', 'Requested'), L('سعر البيع', 'Sold for'), L('المشتري', 'Buyer'), L('هاتف المشتري', 'Buyer phone'), L('رسوم الإدراج', 'Listing fee'), L('العمولة', 'Commission'), L('صافي المالك', 'Owner net'), L('محصّل من المشتري', 'Collected'), L('مدفوع للمالك', 'Paid to owner'), L('الحالة', 'Status'), L('التوصيل', 'Delivery'), L('تاريخ الاستلام', 'Received'), L('تاريخ البيع', 'Sold')],
+    const rows: any[][] = [[L('الرمز', 'Code'), L('القطعة', 'Product'), L('الفئة', 'Category'), L('صاحب القطعة', 'Owner'), L('هاتف المالك', 'Owner phone'), L('نوع المزاد', 'Auction type'), L('المطلوب', 'Requested'), L('سعر البيع', 'Sold for'), L('المشتري', 'Buyer'), L('هاتف المشتري', 'Buyer phone'), L('رسوم الإدراج', 'Listing fee'), L('العمولة', 'Commission'), L('صافي المالك', 'Owner net'), L('محصّل من المشتري', 'Collected'), L('مدفوع للمالك', 'Paid to owner'), L('الحالة', 'Status'), L('التوصيل', 'Delivery'), L('تاريخ الاستلام', 'Received'), L('تاريخ البيع', 'Sold')],
       ...filtered().map(p => { const f = fin(p), o = O(p.owner_id), s = LIFE[life(p)] || LIFE.listed; return [p.code, p.name, p.category || '', oname(p), o?.phone || '', methodName(p.method), p.asked_fils != null ? p.asked_fils / 100 : '', f.sold ? f.price / 100 : '', p.buyer_name || '', p.buyer_phone || '', f.listing / 100, f.comm / 100, f.sold ? f.net / 100 : '', f.bPaid / 100, f.oPaid / 100, L(s[0], s[1]), f.sold ? L(DEL[p.del_status][0], DEL[p.del_status][1]) : '', p.received_on, p.sold_on || ''] })]
     await deliverFile(csvBlob(rows), `mazadboss-sales-${today()}.csv`)
   }
@@ -165,11 +195,11 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
         {p.description && <tr><td className="pm">{L('الوصف', 'Description')}</td><td>{p.description}</td></tr>}
         <tr><td className="pm">{L('صاحب القطعة', 'Original owner')}</td><td>{oname(p)} {o?.phone && <span dir="ltr">· {o.phone}</span>}</td></tr>
         {p.asked_fils != null && <tr><td className="pm">{L('المبلغ المطلوب', 'Requested price')}</td><td>{M(p.asked_fils)}</td></tr>}
-        <tr><td className="pm">{L('طريقة البيع', 'Sale method')}</td><td>{methodName(p.method)}</td></tr>
+        <tr><td className="pm">{L('نوع المزاد', 'Auction type')}</td><td>{methodName(p.method)}</td></tr>
         {p.owner_id && !p.legacy && <tr><td className="pm">{L('الرسوم والعمولة', 'Fees and commission')}</td><td>{p.method === 'order' ? <>{L('رسوم إدراج', 'Listing fee')} {M(p.listing_fee_fils)}{p.listing_upfront ? L(' (مدفوعة)', ' (paid)') : ''} · {L('عمولة', 'commission')} {M(r.order_fixed_fils)} {L('حتى', 'up to')} {M(r.order_threshold_fils)}، {L('ثم', 'then')} {Number(r.order_pct)}%</> : <>{Number(p.listing_fee_fils) > 0 && <>{L('رسوم إدراج', 'Listing fee')} {M(p.listing_fee_fils)} · </>}{L('عمولة ثابتة عند البيع', 'Fixed commission when sold')} {M(r.regular_commission_fils)}</>}</td></tr>}
         {p.notes && <tr><td className="pm">{L('ملاحظات', 'Notes')}</td><td>{p.notes}</td></tr>}</tbody></table>
       <p className="pm" style={{ marginTop: 14 }}>{L('تُحتسب العمولة حسب القواعد السارية وقت البيع.', 'Commission is calculated by the rules in force at the time of sale.')}</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 26 }} className="pm"><span>{L('توقيع المستلم', 'Received by')}: ____________</span><span>{L('توقيع صاحب القطعة', 'Owner signature')}: ____________</span></div><Foot /></> } }
+      <Foot /></> } }
     if (d.type === 'inv' && p) { const f = fin(p), o = O(p.owner_id); return { name: p.inv_no, node: <><Top title={L('فاتورة بيع', 'Sales Invoice')} no={p.inv_no} date={fdate(p.sold_on)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}><div><span className="pm">{L('المشتري', 'Buyer')}</span><br /><b>{p.buyer_name}</b> <span dir="ltr">{p.buyer_phone}</span></div><div><span className="pm">{L('صاحب القطعة', 'Original owner')}</span><br /><b>{oname(p)}</b> <span dir="ltr">{o?.phone}</span></div></div>
       <table className="sm-ptable"><thead><tr><th>{L('البيان', 'Item')}</th><th style={{ textAlign: 'end' }}>{L('المبلغ', 'Amount')}</th></tr></thead><tbody>
@@ -237,11 +267,31 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
 
   // ---------- views ----------
   const TABS: [string, string][] = [['home', L('نظرة عامة', 'Overview')], ['table', L('جدول المبيعات', 'Sales table')], ['receive', L('استلام قطعة', 'Receive product')], ['owners', L('أصحاب القطع', 'Owners')], ['delivery', L('التوصيل', 'Delivery')], ['docs', L('المستندات', 'Documents')], ['rules', L('قواعد العمولة', 'Commission rules')], ['sessions', L('الجلسات', 'Sessions')]]
-  const nav = <div className="sm-nav section">{TABS.map(([k, t]) => <button key={k} className={view === k || (view === 'product' && k === 'table') ? 'on' : ''} onClick={() => go(k)}>{t}</button>)}</div>
+  const vHub = () => { const t = totals(prods), todo = prods.filter(p => ['await_buyer', 'await_owner', 'await_delivery'].includes(life(p)) || (p.stage === 'sold' && !p.confirmed_at)).length
+    const pendDel = prods.filter(p => p.stage === 'sold' && !['delivered', 'failed'].includes(p.del_status)).length
+    const nDocs = prods.length + prods.filter(p => p.inv_no).length + pays.filter(x => !x.reversal_of).length
+    const quick = (pay: string, settle: string) => { setF({ ...F0, pay, settle }); go('table') }
+    const tiles: [string, string, string, number][] = [
+      ['home', L('نظرة عامة', 'Overview'), L('صافي إيرادك ', 'Your net ') + M(t.listing + t.comm), 0],
+      ['table', L('جدول المبيعات', 'Sales table'), prods.length + L(' قطعة', ' products'), todo],
+      ['receive', L('استلام قطعة', 'Receive product'), L('تسجيل منتج جديد', 'Register a new product'), 0],
+      ['owners', L('أصحاب القطع', 'Owners'), owners.length + L(' ملّاك', ' owners') + (t.oDue ? ' · ' + L('لهم ', 'owed ') + M(t.oDue) : ''), 0],
+      ['delivery', L('التوصيل', 'Delivery'), pendDel ? pendDel + L(' بانتظار التوصيل', ' awaiting delivery') : L('لا شيء معلّق', 'Nothing pending'), pendDel],
+      ['docs', L('المستندات', 'Documents'), nDocs + L(' مستند', ' documents'), 0],
+      ['rules', L('قواعد العمولة', 'Commission rules'), L('أمر بيع: ', 'Order Sale: ') + Number(rules.order_pct) + '% ' + L('فوق ', 'above ') + M(rules.order_threshold_fils), 0],
+      ['sessions', L('الجلسات', 'Sessions'), L('سجل البثوث', 'Live history'), 0]]
+    return <>
+      <div className="sm-strip section"><button onClick={() => { setF(F0); go('table') }}><span>{L('إجمالي المبيعات', 'Gross sales')}</span><b>{M(t.gross)}</b></button>
+        <button onClick={() => quick('due', '')}><span>{L('بانتظار التحصيل', 'To collect')} ›</span><b style={{ color: 'var(--red)' }}>{M(t.bDue)}</b></button>
+        <button onClick={() => quick('', 'due')}><span>{L('للملّاك', 'Owed to owners')} ›</span><b>{M(t.oDue)}</b></button></div>
+      <div className="sm-hub">{tiles.map(([k, n, h, b]) => <button key={k} className="sm-htile" onClick={() => { if (k === 'table') setF(F0); go(k) }}><span className="sm-bub"><Ic k={k} /></span><b>{n}</b><small>{h}</small>{b > 0 && <span className="sm-badge">{b}</span>}</button>)}</div></> }
+  const NAMES: Record<string, [string, string]> = { home: ['نظرة عامة', 'Overview'], table: ['جدول المبيعات', 'Sales table'], receive: ['استلام قطعة', 'Receive product'], owners: ['أصحاب القطع', 'Owners'], delivery: ['التوصيل', 'Delivery'], docs: ['المستندات', 'Documents'], rules: ['قواعد العمولة', 'Commission rules'], sessions: ['الجلسات', 'Sessions'] }
+  const backTo = view === 'product' ? from : 'hub'
+  const nav = view === 'hub' ? null : <div className="sm-backrow section"><button className="sm-backbtn" onClick={() => go(backTo)} aria-label={L('رجوع', 'Back')}><Ic k="back" s={20} /></button><span>{view === 'product' ? L(...(NAMES[from] || NAMES.table)) : L('مبيعاتي', 'My Sales')}</span></div>
 
   const vHome = () => { const list = filtered(), t = totals(list), todo = list.filter(p => ['await_buyer', 'await_owner', 'await_delivery'].includes(life(p)) || (p.stage === 'sold' && !p.confirmed_at))
     return <>
-      <div className="row section" style={{ flexWrap: 'wrap' }}><div><h2 style={{ margin: 0 }}>{L('مبيعاتي', 'My Sales')}</h2><div className="muted">{L('القطع، التحصيل، مستحقات الملّاك والتوصيل', 'Products, collections, owner settlements and delivery')}</div></div><button className="btn gold" onClick={() => go('receive')}>+ {L('استلام قطعة جديدة', 'Receive a product')}</button></div>
+      <div className="row section" style={{ flexWrap: 'wrap' }}><div><h2 style={{ margin: 0 }}>{L('مبيعاتي', 'My Sales')}</h2><div className="muted">{L('القطع، التحصيل، مستحقات الملّاك والتوصيل', 'Products, collections, owner settlements and delivery')}</div></div></div>
       {filterBar(false)}
       <div className="card section"><h3>{L('القطع', 'Products')}</h3><div className="sm-tiles"><Tile l={L('قطع مستلمة', 'Products received')} val={t.rec} /><Tile l={L('قطع مباعة', 'Products sold')} val={t.sold} /><Tile l={L('قطع لم تُبَع', 'Unsold products')} val={t.unsold} /><Tile l={L('إجمالي المبيعات', 'Total gross sales')} val={M(t.gross)} /></div></div>
       <div className="card section"><h3>{L('إيرادك أنت (ليس كامل سعر البيع)', 'Your revenue (not the full selling price)')}</h3><div className="sm-tiles"><Tile l={L('رسوم الإدراج', 'Listing fees')} val={M(t.listing)} /><Tile l={L('العمولات المكتسبة', 'Commissions earned')} val={M(t.comm)} /><Tile l={L('صافي إيرادك', 'Your net revenue')} val={M(t.listing + t.comm)} hl /></div>
@@ -257,7 +307,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     <div className="row section" style={{ flexWrap: 'wrap' }}><h2 style={{ margin: 0 }}>{L('جدول المبيعات', 'Sales table')}</h2><div style={{ display: 'flex', gap: 6 }}><button className="btn light" style={{ padding: '7px 10px', fontSize: 13 }} onClick={exportCsv}>{L('تصدير Excel', 'Export Excel')}</button><button className="btn light" style={{ padding: '7px 10px', fontSize: 13 }} onClick={() => setDoc({ type: 'report' })}>{L('تصدير PDF', 'Export PDF')}</button></div></div>
     {filterBar(true)}
     <div className="muted section">{list.length} {L('قطعة · اضغط على أي قطعة لفتح سجلها الكامل', 'products · tap any product to open its full record')}</div>
-    <div className="sm-tbox"><table className="sm-table"><thead><tr><th></th><th>{L('الرمز', 'Code')}</th><th>{L('القطعة', 'Product')}</th><th>{L('صاحب القطعة', 'Owner')}</th><th>{L('هاتفه', 'Owner phone')}</th><th>{L('طريقة البيع', 'Method')}</th><th>{L('المطلوب', 'Requested')}</th><th>{L('سعر البيع', 'Sold for')}</th><th>{L('المشتري', 'Buyer')}</th><th>{L('هاتفه', 'Buyer phone')}</th><th>{L('رسوم الإدراج', 'Listing fee')}</th><th>{L('العمولة', 'Commission')}</th><th>{L('صافي المالك', 'Owner net')}</th><th>{L('الحالة', 'Status')}</th><th>{L('التحصيل', 'Collection')}</th><th>{L('التسوية', 'Settlement')}</th><th>{L('التوصيل', 'Delivery')}</th><th>{L('تاريخ البيع', 'Sale date')}</th></tr></thead>
+    <div className="sm-tbox"><table className="sm-table"><thead><tr><th></th><th>{L('الرمز', 'Code')}</th><th>{L('القطعة', 'Product')}</th><th>{L('صاحب القطعة', 'Owner')}</th><th>{L('هاتفه', 'Owner phone')}</th><th>{L('نوع المزاد', 'Auction type')}</th><th>{L('المطلوب', 'Requested')}</th><th>{L('سعر البيع', 'Sold for')}</th><th>{L('المشتري', 'Buyer')}</th><th>{L('هاتفه', 'Buyer phone')}</th><th>{L('رسوم الإدراج', 'Listing fee')}</th><th>{L('العمولة', 'Commission')}</th><th>{L('صافي المالك', 'Owner net')}</th><th>{L('الحالة', 'Status')}</th><th>{L('التحصيل', 'Collection')}</th><th>{L('التسوية', 'Settlement')}</th><th>{L('التوصيل', 'Delivery')}</th><th>{L('تاريخ البيع', 'Sale date')}</th></tr></thead>
       <tbody>{list.length === 0 && <tr><td colSpan={18} className="muted">{L('لا توجد نتائج', 'No results')}</td></tr>}{list.map(p => { const f = fin(p), o = O(p.owner_id); return <tr key={p.id} onClick={() => open(p.id)}><td><Thumb p={p} size={36} /></td><td dir="ltr">{p.code}</td><td><b>{p.name}</b></td><td>{oname(p)}</td><td dir="ltr">{o?.phone || ''}</td><td>{methodName(p.method)}</td><td>{p.asked_fils != null ? M(p.asked_fils) : '—'}</td><td>{f.sold ? <b>{M(f.price)}</b> : '—'}</td><td>{p.buyer_name || '—'}</td><td dir="ltr">{p.buyer_phone || ''}</td><td>{M(f.listing)}</td><td>{f.sold ? M(f.comm) : '—'}</td><td>{f.sold && p.owner_id ? <b>{M(f.net)}</b> : '—'}</td><td>{lifePill(p)}</td><td>{payPill(p)}</td><td>{setPill(p)}</td><td>{delPill(p)}</td><td>{fdate(p.sold_on)}</td></tr> })}</tbody></table></div>
     <div className="sm-plist">{list.length === 0 && <div className="empty">{L('لا توجد نتائج', 'No results')}</div>}{list.map(p => { const f = fin(p); return <button key={p.id} className="sm-pcard" onClick={() => open(p.id)}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Thumb p={p} /><div style={{ minWidth: 0, flex: 1 }}><b>{p.name}</b><div className="muted"><span dir="ltr">{p.code}</span> · {methodName(p.method)} · {oname(p)}</div></div></div>
@@ -273,18 +323,22 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
         {!R.own && <div className="sm-g2"><div><label>{L('رقم الجوال', 'Mobile number')}</label><PhoneInput value={R.ophone} onChange={(x: string) => { const o = owners.find(q => q.phone && q.phone === x); setR((r: any) => ({ ...r, ophone: x, oname: o && !r.oname ? o.name : r.oname })) }} />{known && <div className="muted" style={{ marginTop: 4 }}>{L('مالك مسجَّل: ', 'Saved owner: ')}<b>{known.name}</b> · {ownerRows(known.id).length} {L('قطعة سابقة', 'earlier products')}</div>}</div>
           <div><label>{L('الاسم الكامل', 'Full name')}</label><input value={R.oname} onChange={e => setR({ ...R, oname: e.target.value })} /></div></div>}
         <h3 style={{ margin: '20px 0 0' }}>{L('القطعة', 'Product')}</h3>
-        <div className="sm-g2"><div><label>{L('اسم القطعة', 'Product name')}</label><input value={R.name} maxLength={120} onChange={e => setR({ ...R, name: e.target.value })} /></div>
+        <label>{L('رمز القطعة (تلقائي)', 'Product code (automatic)')}</label>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span className="sm-code" dir="ltr">{v.code_prefix ? `${v.code_prefix}-${String(nextNo).padStart(4, '0')}` : '—'}</span><small className="muted">{L('رمز فريد لا يتكرر أبداً، وهو نفس رمز القطعة في المزاد المباشر.', 'A unique code that never repeats; it is the same code the product carries in the live auction.')}</small></div>
+        <label>{L('نوع المزاد', 'Auction type')}</label>
+        <div style={{ display: 'flex', gap: 8 }}><button className={'btn ' + (R.method === 'order' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setR({ ...R, method: 'order' })}>{methodName('order')}</button><button className={'btn ' + (R.method === 'regular' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setR({ ...R, method: 'regular' })}>{methodName('regular')}</button></div>
+        {!R.own && <div className="sm-tile" style={{ marginTop: 12 }}><span>{L('القواعد المطبّقة الآن', 'Rules applied now')}</span><b style={{ fontSize: 13, fontWeight: 500 }}>{rulesLine(R.method)}</b></div>}
+        {fee > 0 && <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink)' }}><input type="checkbox" style={{ width: 'auto' }} checked={R.upfront} onChange={e => setR({ ...R, upfront: e.target.checked })} />{L(`استلمتُ رسوم الإدراج (${M(fee)}) الآن، فلا تُخصم لاحقاً من مستحقات صاحب القطعة`, `I collected the listing fee (${M(fee)}) now, so it is not deducted from the owner’s settlement later`)}</label>}
+        <div className="sm-g2"><div><label>{L('اسم القطعة (اختياري)', 'Product name (optional)')}</label><input value={R.name} maxLength={120} placeholder={L('يُسمّى بالفئة تلقائياً إن تُرك فارغاً', 'Named after the category if left empty')} onChange={e => setR({ ...R, name: e.target.value })} /></div>
           <div><label>{L('الفئة', 'Category')}</label><input list="sm-cats" value={R.cat} onChange={e => setR({ ...R, cat: e.target.value })} /><datalist id="sm-cats">{cats.map(c => <option key={c} value={c} />)}</datalist></div></div>
         <label>{L('الوصف والمواصفات', 'Description and specifications')}</label><textarea value={R.desc} onChange={e => setR({ ...R, desc: e.target.value })} />
         <label>{L('الصور (حتى 6، الأولى تظهر للمزايدين)', 'Photos (up to 6, the first is shown to bidders)')}</label><input type="file" accept="image/*" multiple onChange={e => setFiles(Array.from(e.target.files || []))} />{files.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{files.length} {L('صورة', 'photo(s)')}</div>}
-        <div className="sm-g2"><div><label>{L('المبلغ المطلوب من صاحب القطعة', 'Amount requested by the owner')} ({cur})</label><input inputMode="decimal" value={R.asked} onChange={e => setR({ ...R, asked: e.target.value })} /></div>
+        <div className="sm-g2">{R.method === 'order' && <div><label>{L('المبلغ المطلوب من صاحب القطعة', 'Amount requested by the owner')} ({cur})</label><input inputMode="decimal" value={R.asked} onChange={e => setR({ ...R, asked: e.target.value, start: R.touched ? R.start : e.target.value })} /></div>}
+          <div><label>{L('سعر البداية في المزاد', 'Auction starting price')} ({cur}){R.method === 'order' && <small className="muted"> · {L('يظهر لك فقط', 'only you see it')}</small>}</label><input inputMode="decimal" value={R.start} onChange={e => setR({ ...R, start: e.target.value, touched: true })} /></div></div>
+        {R.method === 'order' && aedToFils(R.asked || '0') > 0 && aedToFils(R.start || '0') > 0 && aedToFils(R.asked) !== aedToFils(R.start) && (() => { const a = aedToFils(R.asked), st = aedToFils(R.start), low = st < a
+          return <div className={'notice'} style={{ margin: '10px 0 0', ...(low ? {} : { background: '#e6eff7', borderColor: '#cfe0ef', color: '#2b5d8a' }) }}>{low ? L('⚠ سعر البداية أقل من المبلغ المطلوب من صاحب القطعة بـ ', '⚠ The starting price is lower than the owner’s requested amount by ') : L('ℹ سعر البداية أعلى من المبلغ المطلوب من صاحب القطعة بـ ', 'ℹ The starting price is higher than the owner’s requested amount by ')}<b>{M(Math.abs(a - st))}</b>{low ? L('. قد تُباع القطعة بأقل مما يطلبه صاحبها.', '. The product may sell for less than the owner asked.') : ''}</div> })()}
+        <div className="sm-g2"><div><label>{L('قيمة الزيادة', 'Bid increment')} ({cur}, ≥ 2)</label><input inputMode="decimal" value={R.inc} onChange={e => setR({ ...R, inc: e.target.value })} /></div>
           <div><label>{L('تاريخ الاستلام', 'Date received')}</label><input type="date" value={R.date} max={today()} onChange={e => setR({ ...R, date: e.target.value })} /></div></div>
-        <label>{L('طريقة البيع', 'Sale method')}</label>
-        <div style={{ display: 'flex', gap: 8 }}><button className={'btn ' + (R.method === 'order' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setR({ ...R, method: 'order' })}>{methodName('order')}</button><button className={'btn ' + (R.method === 'regular' ? '' : 'light')} style={{ flex: 1 }} onClick={() => setR({ ...R, method: 'regular' })}>{methodName('regular')}</button></div>
-        <div className="sm-g2"><div><label>{L('سعر البداية', 'Start price')} ({cur}){R.method === 'order' && <small className="muted"> · {L('يظهر لك فقط', 'only you see it')}</small>}</label><input inputMode="decimal" value={R.start} onChange={e => setR({ ...R, start: e.target.value })} /></div>
-          <div><label>{L('قيمة الزيادة', 'Bid increment')} ({cur}, ≥ 2)</label><input inputMode="decimal" value={R.inc} onChange={e => setR({ ...R, inc: e.target.value })} /></div></div>
-        {!R.own && <div className="sm-tile" style={{ marginTop: 12 }}><span>{L('القواعد المطبّقة الآن', 'Rules applied now')}</span><b style={{ fontSize: 13, fontWeight: 500 }}>{rulesLine(R.method)}</b></div>}
-        {fee > 0 && <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink)' }}><input type="checkbox" style={{ width: 'auto' }} checked={R.upfront} onChange={e => setR({ ...R, upfront: e.target.checked })} />{L(`استلمتُ رسوم الإدراج (${M(fee)}) الآن، فلا تُخصم لاحقاً من مستحقات صاحب القطعة`, `I collected the listing fee (${M(fee)}) now, so it is not deducted from the owner’s settlement later`)}</label>}
         <label>{L('ملاحظات إضافية', 'Additional notes')}</label><textarea value={R.notes} onChange={e => setR({ ...R, notes: e.target.value })} />
         <div className="notice" style={{ margin: '12px 0 0' }}>{L('بعد الحفظ تُضاف القطعة تلقائياً إلى تبويب المنتجات تحت «', 'After saving, the product is added automatically to the Products tab under “')}{methodName(R.method)}{L('» وتكون جاهزة لفتح المزاد عليها.', '”, ready to be opened for auction.')}</div>
         {err && <p style={{ color: 'var(--red)', margin: '10px 0 0' }}>{err}</p>}
@@ -307,10 +361,9 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     else if (k === 'delivered') next = <b>{L('اكتملت دورة هذه القطعة بالكامل', 'This product’s cycle is complete')}</b>
     else if (k === 'unsold') next = <><b>{L('لم تُبَع', 'Not sold')}{f.feeOwed > 0 && <> · {L('رسوم إدراج مستحقة على المالك', 'listing fee owed by the owner')} {M(f.feeOwed)}</>}</b><button className="btn gold" style={sm} disabled={busy} onClick={() => act(p.id, 'relist')}>{L('إعادتها إلى قائمة المنتجات', 'Put back in the Products queue')}</button></>
     return <>
-      <button className="btn light section" onClick={() => go('table')}>{lang === 'ar' ? '→' : '←'} {L('رجوع', 'Back')}</button>
       <div className="row section" style={{ flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}><Thumb p={p} size={56} /><div style={{ minWidth: 0 }}><h2 style={{ margin: 0 }}>{p.name}</h2><div className="muted"><span dir="ltr">{p.code}</span>{p.category ? ' · ' + p.category : ''} · {methodName(p.method)}</div></div></div>{lifePill(p)}</div>
       <div className="sm-steps section">{flow.map((s, i) => <div key={s} className={'sm-step ' + (k === 'delivered' || i < idx ? 'done' : i === idx ? 'now' : '')}>{L(LIFE[s][0], LIFE[s][1]).replace(' · مكتمل', '').replace(' · complete', '')}</div>)}</div>
-      {next && <div className="sm-next section">{next}</div>}
+      {next && <div className="sm-next section">{next}{waBtn(p, k)}</div>}
       {p.photos?.length > 1 && <div className="section" style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>{p.photos.map((u: string) => <img key={u} src={u} alt="" style={{ width: 96, height: 96, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} />)}</div>}
       <div className="sm-g2 section">
         <div className="card"><h3>{L('بيانات القطعة', 'Product details')}</h3>
@@ -393,14 +446,14 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
           <label>{L('طرق الدفع (مفصولة بفاصلة)', 'Payment methods (comma separated)')}</label><input value={x.pm} onChange={set('pm')} /></div></div>
       {err && <p style={{ color: 'var(--red)' }}>{err}</p>}
       <button className="btn gold section" disabled={busy || !rf} onClick={saveRules}>{L('حفظ القواعد', 'Save rules')}</button>
-      <div className="card section"><h3>{L('حاسبة تجريبية (بالقواعد المحفوظة)', 'Try the calculator (saved rules)')}</h3><div className="sm-g2"><div><label>{L('طريقة البيع', 'Sale method')}</label><select value={calc.m} onChange={e => setCalc({ ...calc, m: e.target.value })}><option value="order">{methodName('order')}</option><option value="regular">{methodName('regular')}</option></select></div><div><label>{L('سعر البيع', 'Selling price')} ({cur})</label><input inputMode="decimal" value={calc.p} onChange={e => setCalc({ ...calc, p: e.target.value })} /></div></div>
+      <div className="card section"><h3>{L('حاسبة تجريبية (بالقواعد المحفوظة)', 'Try the calculator (saved rules)')}</h3><div className="sm-g2"><div><label>{L('نوع المزاد', 'Auction type')}</label><select value={calc.m} onChange={e => setCalc({ ...calc, m: e.target.value })}><option value="order">{methodName('order')}</option><option value="regular">{methodName('regular')}</option></select></div><div><label>{L('سعر البيع', 'Selling price')} ({cur})</label><input inputMode="decimal" value={calc.p} onChange={e => setCalc({ ...calc, p: e.target.value })} /></div></div>
         <div className="sm-tile" style={{ marginTop: 12 }}><span>{L('العمولة', 'Commission')}: {M(c.amount)} · {L('رسوم الإدراج', 'listing fee')}: {M(lf)}</span><b>{L('صافي صاحب القطعة', 'Owner net')}: {M(Math.max(0, price - c.amount - lf))}</b></div></div>
       <div className="card"><h3>{L('سجل تغييرات القواعد', 'Rules change log')}</h3>{rlog.length === 0 ? <div className="muted">{L('لا توجد تغييرات بعد', 'No changes yet')}</div> : rlog.map(g => <div key={g.id} className="sm-log"><span className="muted">{ftime(g.created_at)}</span>{Object.entries(g.changes || {}).map(([k, val]: any) => <div key={k}>{L((RK[k] || [k, k])[0], (RK[k] || [k, k])[1])}: {rv(k, val[0])} ← {rv(k, val[1])}</div>)}</div>)}</div></> }
 
   const mp = modal?.id ? prods.find(x => x.id === modal.id) : null, d = doc ? docBody(doc) : null
   return <div className="sm">
     {nav}
-    {view === 'home' && vHome()}{view === 'table' && vTable()}{view === 'receive' && vReceive()}{view === 'product' && vProduct()}{view === 'owners' && vOwners()}{view === 'delivery' && vDelivery()}{view === 'docs' && vDocs()}{view === 'rules' && vRules()}{view === 'sessions' && sessions}
+    {view === 'hub' && vHub()}{view === 'home' && vHome()}{view === 'table' && vTable()}{view === 'receive' && vReceive()}{view === 'product' && vProduct()}{view === 'owners' && vOwners()}{view === 'delivery' && vDelivery()}{view === 'docs' && vDocs()}{view === 'rules' && vRules()}{view === 'sessions' && sessions}
 
     {modal && <div className="sm-modal" onClick={close}><div className="sm-sheet" onClick={e => e.stopPropagation()}>
       {modal.t === 'pay' && mp && <><h3>{modal.kind === 'buyer' ? L('تسجيل دفعة المشتري', 'Record buyer payment') : L('تسجيل دفعة صاحب القطعة', 'Record owner payment')}</h3>
@@ -430,6 +483,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       {modal.t === 'img' && <img src={modal.url} alt="" style={{ width: '100%', borderRadius: 12 }} />}
       <button className="btn light full" style={{ marginTop: 8 }} onClick={close}>{L('إغلاق', 'Close')}</button></div></div>}
 
+    {sheet && filterSheet()}
     {doc && <div className="sm-modal sm-docmodal" onClick={() => setDoc(null)}><div className="sm-sheet wide" onClick={e => e.stopPropagation()}>
       {d ? <><div className="sm-paper" ref={paper} dir={lang === 'ar' ? 'rtl' : 'ltr'}>{d.node}</div>
         <div className="sm-docbtns"><button className="btn gold" style={{ flex: 1 }} disabled={busy} onClick={() => sharePdf(d.name)}>{busy ? '…' : L('مشاركة / حفظ PDF', 'Share / save PDF')}</button><button className="btn light" style={{ flex: 1 }} onClick={() => window.print()}>{L('طباعة', 'Print')}</button></div></> : <div className="empty">…</div>}

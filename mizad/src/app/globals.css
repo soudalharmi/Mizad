@@ -95,3 +95,50 @@ a{color:var(--gold)}
 .sm-docbtns{display:flex;gap:8px;margin-top:12px}
 @media(max-width:760px){.sm-tbox{display:none}.sm-plist{display:flex}}
 @media print{body *{visibility:hidden}.sm-paper,.sm-paper *{visibility:visible}.sm-paper{position:absolute;inset:0;border:0}}
+
+/* ---- host subscription ---- */
+.subwrap{display:flex;flex-direction:column;gap:14px;max-width:620px;margin:0 auto}
+.subhead.ok{border-top:4px solid var(--green)}.subhead.warn{border-top:4px solid var(--gold)}.subhead.bad{border-top:4px solid var(--red)}
+.subdays{display:flex;align-items:baseline;gap:8px;margin:6px 0 10px}.subdays b{font-size:44px;line-height:1;font-variant-numeric:tabular-nums}.subdays span{color:var(--muted)}
+.subbar{height:8px;border-radius:99px;background:#efece5;overflow:hidden;margin-bottom:10px}.subbar i{display:block;height:100%;background:var(--gold);border-radius:99px}
+.plans{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:620px){.plans{grid-template-columns:repeat(4,1fr)}}
+.plan{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:18px 8px 12px;border-radius:16px;background:#f8f7f4;border:2px solid var(--line);text-align:center}
+.plan.on{border-color:var(--gold);background:#fbf6ee}
+.plan .price{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.plan s{font-size:12px}.plan small{font-size:11px}
+.plan .save{position:absolute;top:-10px;background:var(--green);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px}
+.subsum{margin-top:14px;padding:12px 14px;border-radius:14px;background:#f8f7f4;font-size:14px}.subsum .row{padding:4px 0}.subsum .tot{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;font-size:16px}
+.subbanner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fbf6ee;border:1px solid #efdfbd;color:#775b2e;border-radius:14px;padding:11px 14px;margin-bottom:16px;font-size:13px}
+.codes .crow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+
+/* ---- My Sales: icon hub (Design A) ---- */
+.sm-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sm-strip button{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:start;min-width:0}
+.sm-strip span{display:block;font-size:11.5px;color:var(--muted)}.sm-strip b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sm-hub{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:760px){.sm-hub{grid-template-columns:repeat(4,1fr)}}
+.sm-htile{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:16px 14px;text-align:start;display:flex;flex-direction:column;gap:9px;min-height:124px;transition:transform .15s}
+.sm-htile:active{transform:scale(.97)}
+.sm-bub{width:46px;height:46px;border-radius:14px;background:#f7f0e4;color:var(--gold);display:flex;align-items:center;justify-content:center}
+.sm-htile b{font-size:15px}.sm-htile small{color:var(--muted);font-size:12px;margin-top:-5px}
+.sm-badge{position:absolute;top:12px;inset-inline-end:12px;min-width:22px;height:22px;border-radius:99px;background:var(--red);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px}
+.sm-backrow{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.sm-backbtn{width:40px;height:40px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+[dir=ltr] .sm-backbtn svg{transform:scaleX(-1)}
+.sm-fwrap{display:flex;flex-direction:column;gap:8px}
+.sm-sbar{display:flex;gap:8px}
+.sm-sbox{flex:1;display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:0 12px;height:46px;min-width:0;margin:0;color:var(--muted)}
+.sm-sbox input{border:0;background:none;padding:0;height:100%;box-shadow:none!important;min-width:0}
+.sm-fbtn{position:relative;width:46px;height:46px;border-radius:14px;background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;color:var(--ink)}
+.sm-fbtn.wide{width:auto;padding:0 14px;gap:6px;font-weight:600;font-size:13px}
+.sm-fbtn i{position:absolute;top:-6px;inset-inline-start:-6px;min-width:20px;height:20px;border-radius:99px;background:var(--gold);color:#fff;font-style:normal;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.sm-achips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.sm-achips::-webkit-scrollbar{display:none}
+.sm-achip{white-space:nowrap;background:#252621;color:#fff;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600}
+.sm-modal.sm-bottom{align-items:flex-end;padding:0}
+.sm-modal.sm-bottom .sm-sheet{border-radius:22px 22px 0 0;width:min(560px,100%);max-height:88vh;overflow-y:auto;margin:0;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.sm-grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 12px}
+.sm-fsec{margin-bottom:12px}.sm-fsec>span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.sm-fseg{display:flex;flex-wrap:wrap;gap:6px}.sm-fseg button{padding:8px 12px;border-radius:12px;background:#f8f7f4;border:1px solid var(--line);font-size:13px}.sm-fseg button.on{background:#252621;color:#fff;border-color:#252621}
+.sm-wa{display:inline-flex;align-items:center;gap:7px;background:#25d366;color:#fff;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+.sm-code{display:inline-block;font-weight:700;letter-spacing:.5px;background:#f7f0e4;color:#7a5a2b;border-radius:10px;padding:8px 14px}

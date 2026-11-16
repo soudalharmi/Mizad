@@ -11,16 +11,27 @@ export async function POST(req: Request) {
   try {
     const u = await currentUser()
     if (!u) return fail('FORBIDDEN', 'not signed in', 401)
-    const { kind, invoiceId } = await req.json()
+    const { kind, invoiceId, months, code } = await req.json()
     const db = admin()
     const { data: v, error: ve } = await db.from('vendors').select('*').eq('owner_id', u.id).maybeSingle()
     if (ve) return fail('GENERIC', 'vendors: ' + ve.message, 500)
     if (!v) return fail('FORBIDDEN', 'no host page for this account', 403)
     if (!process.env.ZIINA_API_TOKEN) return fail('PAY_UNAVAILABLE', 'ZIINA_API_TOKEN is not set in Netlify', 500)
     const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin
-    let amount = 0, name = '', invoice: string | null = null, k: 'activation' | 'invoice' = 'invoice'
+    let amount = 0, name = '', invoice: string | null = null, k: 'activation' | 'invoice' | 'subscription' = 'invoice', extra: any = {}
 
-    if (kind === 'activation') {
+    if (kind === 'subscription') {
+      if (v.status === 'suspended') return fail('FORBIDDEN', 'account suspended', 403)
+      const { data: q, error: qe } = await db.rpc('sub_quote', { p_months: Number(months), p_code: code || null })
+      if (qe) return fail(/CODE_INVALID|PLAN_INVALID/.test(qe.message) ? (qe.message.match(/CODE_INVALID|PLAN_INVALID/)![0]) : 'GENERIC', qe.message)
+      if (Number(q.total) === 0) {
+        const { error: fe } = await db.rpc('apply_subscription', { p_vendor: v.id, p_months: q.months, p_days: 0, p_list: q.list, p_amount: 0, p_ref: 'free-' + crypto.randomUUID(), p_code_id: q.code_id, p_kind: 'free' })
+        if (fe) return fail('GENERIC', fe.message, 500)
+        return NextResponse.json({ url: site + '/dashboard?paid=1' })
+      }
+      amount = Number(q.total); name = `Mazad Boss subscription · ${q.months} month${q.months > 1 ? 's' : ''}`; k = 'subscription'
+      extra = { months: q.months, code_id: q.code_id, list_fils: q.list }
+    } else if (kind === 'activation') {
       if (v.status !== 'pending_activation') return fail('ALREADY_ACTIVE', 'already active')
       const { data: s } = await db.from('platform_settings').select('activation_fee_fils').single()
       amount = s!.activation_fee_fils; name = 'Mazad Boss account activation'; k = 'activation'
@@ -52,7 +63,7 @@ export async function POST(req: Request) {
     } else return fail('GENERIC', 'unknown kind')
     if (amount < 200) return fail('PAY_MIN', 'amount below AED 2: ' + amount)
 
-    const { data: row, error } = await db.from('ziina_intents').insert({ vendor_id: v.id, kind: k, invoice_id: invoice, amount_fils: amount }).select('ref').single()
+    const { data: row, error } = await db.from('ziina_intents').insert({ vendor_id: v.id, kind: k, invoice_id: invoice, amount_fils: amount, ...extra }).select('ref').single()
     if (error || !row) return fail('GENERIC', 'ziina_intents: ' + (error?.message || 'no row'), 500)
     try {
       const it = await createIntent({
