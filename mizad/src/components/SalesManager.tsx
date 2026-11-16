@@ -16,7 +16,7 @@ const digits = (x?: string) => String(x || '').replace(/\D/g, '')
 const F0 = { range: 'all', from: '', to: '', method: '', cat: '', owner: '', buyer: '', pay: '', del: '', status: '', settle: '', q: '' }
 const R0 = { touched: false, own: false, ophone: '', oname: '', name: '', cat: '', desc: '', asked: '', method: 'order', start: '', inc: '', date: '', notes: '', upfront: false }
 
-const ICN: Record<string, string> = { home: 'M4 20V10M10 20V4M16 20v-7M22 20H2', table: 'M3 4h18v16H3zM3 9h18M9 9v11', receive: 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3', owners: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8', delivery: 'M2 6h11v10H2zM13 10h4l4 4v2h-8M6 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM17 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4z', docs: 'M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8', rules: 'M7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM17 14a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM19 5 5 19', sessions: 'M3 5h18v16H3zM8 3v4M16 3v4M3 10h18', search: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-3.5-3.5', filter: 'M4 6h16M7 12h10M10 18h4', back: 'm9 6 6 6-6 6' }
+const ICN: Record<string, string> = { home: 'M4 20V10M10 20V4M16 20v-7M22 20H2', table: 'M3 4h18v16H3zM3 9h18M9 9v11', receive: 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3', owners: 'M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8', delivery: 'M2 6h11v10H2zM13 10h4l4 4v2h-8M6 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM17 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4z', docs: 'M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8', rules: 'M7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM17 14a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM19 5 5 19', sessions: 'M3 5h18v16H3zM8 3v4M16 3v4M3 10h18', support: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z', search: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-3.5-3.5', filter: 'M4 6h16M7 12h10M10 18h4', back: 'm9 6 6 6-6 6' }
 const Ic = ({ k, s = 24 }: { k: string; s?: number }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICN[k]} /></svg>
 
 export default function SalesManager({ v, lang, say, view, setView, sig, onChanged, goProducts, sessions }: Props) {
@@ -26,7 +26,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   const cur = v.currency || 'AED'
   const [prods, setProds] = useState<any[]>([]), [owners, setOwners] = useState<any[]>([]), [pays, setPays] = useState<any[]>([]), [rules, setRules] = useState<any>(DEFAULT_RULES), [rlog, setRlog] = useState<any[]>([])
   const [loaded, setLoaded] = useState(false), [setup, setSetup] = useState(false), [sel, setSel] = useState<string | null>(null), [plog, setPlog] = useState<any[]>([])
-  const [nextNo, setNextNo] = useState(1), [sheet, setSheet] = useState(false), [from, setFrom] = useState('table'), [F, setF] = useState<any>(F0), [R, setR] = useState<any>({ ...R0, date: today() }), [files, setFiles] = useState<File[]>([]), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  const [sups, setSups] = useState<any[]>([]), [nextNo, setNextNo] = useState(1), [sheet, setSheet] = useState(false), [from, setFrom] = useState('table'), [F, setF] = useState<any>(F0), [R, setR] = useState<any>({ ...R0, date: today() }), [files, setFiles] = useState<File[]>([]), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [modal, setModal] = useState<any>(null), [mf, setMf] = useState<any>({}), [doc, setDoc] = useState<any>(null), [rf, setRf] = useState<any>(null), [calc, setCalc] = useState<any>({ m: 'order', p: '1500' }), [month, setMonth] = useState(today().slice(0, 7))
   const paper = useRef<HTMLDivElement>(null)
 
@@ -35,6 +35,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     const [a, b, c, d, e] = await Promise.all([q('sale_products').order('created_at', { ascending: false }).limit(5000), q('sale_owners').order('name'), q('sale_payments').order('created_at').limit(20000), db.from('sales_rules').select('*').eq('vendor_id', v.id).maybeSingle(), q('sales_rules_log').order('created_at', { ascending: false }).limit(50)])
     if (a.error) { setSetup(true); setLoaded(true); return }
     setSetup(false); setProds(a.data || []); setOwners(b.data || []); setPays(c.data || []); setRules(d.data || DEFAULT_RULES); setRlog(e.data || []); setLoaded(true)
+    const { data: ss } = await db.from('sale_supports').select('*').eq('vendor_id', v.id).order('created_at', { ascending: false }).limit(5000); setSups(ss || [])
     const { data: cn } = await db.from('sale_counters').select('n').eq('vendor_id', v.id).eq('kind', 'code').maybeSingle(); setNextNo(Number(cn?.n || 0) + 1)
   }, [v.id])
   useEffect(() => { load() }, [load, sig])
@@ -51,7 +52,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   const ERR: Record<string, [string, string]> = {
     FORBIDDEN: ['غير مسموح', 'Not allowed'], BAD_INPUT: ['تحقق من البيانات المدخلة', 'Check the details you entered'], BAD_PRICE: ['اكتب سعر البداية وقيمة زيادة لا تقل عن 2', 'Enter a start price and an increment of at least 2'],
     OWNER_REQUIRED: ['اكتب اسم صاحب القطعة ورقم جواله', 'Enter the owner’s name and mobile number'], NOT_SOLD: ['القطعة لم تُبَع بعد', 'The product is not sold yet'], BAD_AMOUNT: ['اكتب مبلغاً أكبر من صفر', 'Enter an amount above zero'],
-    OVER_DUE: ['المبلغ أكبر من المتبقي', 'The amount is more than what remains'], BUYER_NOT_PAID: ['لا يمكن تسوية صاحب القطعة قبل تحصيل كامل المبلغ من المشتري', 'The owner cannot be settled before the buyer has paid in full'],
+    OVER_DUE: ['المبلغ أكبر من المتبقي', 'The amount is more than what remains'], SUPPORTERS_NOT_PAID: ['لا يمكن تسوية صاحب القطعة قبل تحصيل مبالغ الداعمين كاملة', 'The owner cannot be settled until every supporter has paid in full'], BUYER_NOT_PAID: ['لا يمكن تسوية صاحب القطعة قبل تحصيل كامل المبلغ من المشتري', 'The owner cannot be settled before the buyer has paid in full'],
     REASON_REQUIRED: ['اكتب سبب العكس', 'Enter the reason'], ALREADY_REVERSED: ['هذا السند معكوس مسبقاً', 'This entry is already reversed'], OWNER_ALREADY_PAID: ['لا يمكن عكس التحصيل بعد دفع مستحقات صاحب القطعة. اعكس دفعة المالك أولاً', 'A collection cannot be reversed after the owner was paid. Reverse the owner payment first'],
     IN_AUCTION: ['القطعة في المزاد الآن. أغلق المزاد عليها أولاً', 'The product is in auction now. Close it first'], BAD_ACTION: ['هذا الإجراء غير متاح لهذه القطعة', 'This action is not available for this product'], NOT_FOUND: ['غير موجود', 'Not found'],
     SALES_SETUP: ['قاعدة البيانات تحتاج تحديثاً: شغّل ملف SQL رقم 023', 'The database needs an update: run SQL file 023'], GENERIC: ['تعذر تنفيذ الطلب', 'Could not complete the request'],
@@ -81,7 +82,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       if (F.method && p.method !== F.method) return false; if (F.cat && p.category !== F.cat) return false; if (F.owner && p.owner_id !== F.owner) return false
       if (F.buyer && !String(p.buyer_name || '').toLowerCase().includes(F.buyer.toLowerCase())) return false
       if (F.settle === 'due' && !(f.sold && p.owner_id && f.oDue > 0)) return false
-      if (F.pay && (!f.sold || (F.pay === 'due' ? f.bDue <= 0 : F.pay === 'paid' ? f.bDue > 0 : F.pay === 'partial' ? !(f.bPaid > 0 && f.bDue > 0) : f.bPaid > 0))) return false
+      if (F.pay && (!f.sold || (F.pay === 'due' ? f.bDue + f.sDue <= 0 : F.pay === 'paid' ? f.bDue > 0 : F.pay === 'partial' ? !(f.bPaid > 0 && f.bDue > 0) : f.bPaid > 0))) return false
       if (F.del && (!f.sold || p.del_status !== F.del)) return false
       if (F.status && life(p) !== F.status) return false
       if (q) { const hay = [p.name, p.code, o?.name, p.buyer_name].join(' ').toLowerCase(); const ph = digits(o?.phone) + ' ' + digits(p.buyer_phone); if (!hay.includes(q) && !(qd.length > 2 && ph.includes(qd))) return false }
@@ -90,7 +91,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   }
   const totals = (list: any[]) => {
     const t = { rec: list.length, sold: 0, unsold: 0, gross: 0, listing: 0, comm: 0, owed: 0, oPaid: 0, oDue: 0, coll: 0, bDue: 0, feeOwed: 0, held: 0 }
-    for (const p of list) { const f = fin(p); if (f.sold) t.sold++; if (p.stage === 'unsold') t.unsold++; t.gross += f.price; t.listing += f.listing; t.comm += f.comm; t.owed += f.net; t.oPaid += f.oPaid; t.oDue += f.oDue; t.coll += f.bPaid; t.bDue += f.bDue; t.feeOwed += f.feeOwed; t.held += Math.max(0, Math.min(f.bPaid, f.net) - f.oPaid) }
+    for (const p of list) { const f = fin(p); if (f.sold) t.sold++; if (p.stage === 'unsold') t.unsold++; t.gross += f.price; t.listing += f.listing; t.comm += f.comm; t.owed += f.net; t.oPaid += f.oPaid; t.oDue += f.oDue; t.coll += f.bPaid + f.sPaid; t.bDue += f.bDue + f.sDue; t.feeOwed += f.feeOwed; t.held += Math.max(0, Math.min(f.bPaid + f.sPaid, f.net) - f.oPaid) }
     return t
   }
   const Tile = ({ l, val, hl }: any) => <div className={'sm-tile' + (hl ? ' hl' : '')}><span>{l}</span><b>{val}</b></div>
@@ -135,6 +136,25 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     if (!to) return null
     return <a className="sm-wa" href={`https://wa.me/${digits(to)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8.2 19z" /><path d="M9 9.5c.3 1.6 1.9 3.5 3.8 4.3l1.2-1.1 1.8.9c-.2.9-1 1.6-2 1.5C10.7 14.8 8.6 12.5 8.4 10c0-1 .6-1.7 1.4-1.9l.9 1.8z" fill="currentColor" stroke="none" /></svg>{L('واتساب ', 'WhatsApp ')}{who}</a> }
 
+  const spPaid = (sid: string) => pays.filter(x => x.support_id === sid).reduce((n, x) => n + Number(x.amount_fils), 0)
+  const spDue = (s0: any) => Math.max(0, Number(s0.amount_fils) - spPaid(s0.id))
+  const openSupPay = (s0: any) => { setMf({ amt: String(spDue(s0) / 100), method: rules.pay_methods?.[0] || 'Cash', date: today(), ref: '', notes: '', file: null }); setErr(''); setModal({ t: 'pay', kind: 'supporter', id: s0.product_id, sid: s0.id }) }
+  const waSup = (s0: any) => { const p = prods.find(q => q.id === s0.product_id); if (!s0.supporter_phone || !p) return null
+    const msg = L(`مرحباً ${s0.supporter_name}، شكراً لدعمك ${s0.winner_name} في مزاد ${v.name}\nالقطعة: ${p.name} (${p.code})\nرقم فاتورة الدعم: ${s0.inv_no}\nمبلغ الدعم المتبقي: ${M(spDue(s0))}`, `Hello ${s0.supporter_name}, thank you for supporting ${s0.winner_name} in ${v.name}\nProduct: ${p.name} (${p.code})\nSupport invoice: ${s0.inv_no}\nSupport balance due: ${M(spDue(s0))}`)
+    return <a className="sm-wa" style={{ padding: '6px 10px', fontSize: 12 }} href={`https://wa.me/${digits(s0.supporter_phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer">{L('واتساب', 'WhatsApp')}</a> }
+  const supCard = (s0: any, withProduct: boolean) => { const p = prods.find(q => q.id === s0.product_id), due = spDue(s0), sm = { padding: '6px 10px', fontSize: 13 }
+    return <div className="card" key={s0.id} style={{ boxShadow: 'none' }}>
+      <div className="row"><div style={{ minWidth: 0 }}><b>{s0.supporter_name}</b> <span dir="ltr" className="muted">{s0.supporter_phone || ''}</span><div className="muted">{L('دعم الفائز', 'Supported the winner')} <b style={{ color: 'var(--ink)' }}>{s0.winner_name}</b></div></div>{due === 0 ? <span className="pill green">{L('مدفوع', 'Paid')}</span> : spPaid(s0.id) > 0 ? <span className="pill gold">{L('دفع جزئي', 'Partly paid')}</span> : <span className="pill red">{L('بانتظار الدفع', 'Awaiting payment')}</span>}</div>
+      {withProduct && p && <button className="kv sm-rowbtn" onClick={() => open(p.id)}><span>{p.name} <span className="muted" dir="ltr">{p.code}</span></span><span className="muted">›</span></button>}
+      <div className="kv"><span>{L('مبلغ الدعم', 'Support amount')}</span><b>{M(s0.amount_fils)}</b></div><div className="kv"><span>{L('تم تحصيله', 'Collected')}</span><b>{M(spPaid(s0.id))}</b></div><div className="kv"><span>{L('المتبقي', 'Remaining')}</span><b>{M(due)}</b></div>
+      {pays.filter(x => x.support_id === s0.id).map(x => <div className="kv" key={x.id} style={{ alignItems: 'center', gap: 6, flexWrap: 'wrap' }}><span><b dir="ltr">{x.no}</b> · {fdate(x.paid_on)} · {payName(x.method)} {x.reversal_of && <span className="pill red">{L('عكس', 'Reversal')}</span>}{x.reversed && <span className="pill">{L('معكوس', 'Reversed')}</span>}</span>
+        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><b>{M(x.amount_fils)}</b>{!x.reversal_of && <button className="btn light" style={sm} onClick={() => setDoc({ type: 'pay', id: s0.product_id, no: x.no })}>{L('السند', 'Receipt')}</button>}{!x.reversed && !x.reversal_of && <button className="btn red" style={sm} onClick={() => { setMf({ reason: '' }); setErr(''); setModal({ t: 'rev', pid: x.id, no: x.no }) }}>{L('عكس', 'Reverse')}</button>}</span></div>)}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}><button className="btn gold" style={sm} disabled={due === 0} onClick={() => openSupPay(s0)}>{L('تسجيل دفعة الداعم', 'Record supporter payment')}</button><button className="btn light" style={sm} onClick={() => setDoc({ type: 'sp', sid: s0.id })}>{L('فاتورة الدعم', 'Support invoice')} <span dir="ltr">{s0.inv_no}</span></button>{due > 0 && waSup(s0)}</div></div> }
+  const vSupport = () => { const tot = sups.reduce((n, x) => n + Number(x.amount_fils), 0), paid = sups.reduce((n, x) => n + spPaid(x.id), 0)
+    return <><h2 style={{ margin: '0 0 6px' }}>{L('مدفوعات الداعمين', 'Supporter payments')}</h2><div className="muted section">{L('فقط من دعموا الفائز بالمزاد. الدعم لمزايد لم يفز لا يُحتسب.', 'Only supporters of the auction winner. Support given to a bidder who did not win is not counted.')}</div>
+      <div className="sm-tiles section"><Tile l={L('إجمالي الدعم', 'Total support')} val={M(tot)} /><Tile l={L('تم تحصيله', 'Collected')} val={M(paid)} /><Tile l={L('المتبقي', 'Remaining')} val={M(tot - paid)} hl={tot - paid > 0} /></div>
+      {sups.length === 0 ? <div className="empty">{L('لا يوجد دعم مسجّل لفائزين بعد', 'No support for winners yet')}</div> : <div className="sm-g2">{[...sups].sort((a, b) => (spDue(a) > 0 ? 0 : 1) - (spDue(b) > 0 ? 0 : 1)).map(x => supCard(x, true))}</div>}</> }
+
   // ---------- actions ----------
   const uploadAll = async () => { const urls: string[] = []; for (const f of files.slice(0, 6)) { const c = await compressImage(f); const p = `${v.id}/${crypto.randomUUID()}.${c.ext}`; const { error } = await db.storage.from('products').upload(p, c.blob, { contentType: c.type, cacheControl: '31536000' }); if (!error) urls.push(db.storage.from('products').getPublicUrl(p).data.publicUrl) } return urls }
   const receive = async (more: boolean) => {
@@ -155,7 +175,8 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     const amount = aedToFils(mf.amt || '0'); if (!(amount > 0)) return setErr(E({ error: 'BAD_AMOUNT' }))
     setBusy(true); setErr(''); let receipt: string | null = null
     if (mf.file) { const c = await compressImage(mf.file, 1600); const path = `${v.id}/${crypto.randomUUID()}.${c.ext}`; const { error } = await db.storage.from('receipts').upload(path, c.blob, { contentType: c.type }); if (!error) receipt = path }
-    const j = await call({ action: 'pay', productId: p.id, kind: modal.kind, amount, method: mf.method || rules.pay_methods?.[0], date: mf.date || today(), ref: mf.ref, notes: mf.notes, receipt })
+    const j = modal.kind === 'supporter' ? await call({ action: 'pay_support', supportId: modal.sid, amount, method: mf.method || rules.pay_methods?.[0], date: mf.date || today(), ref: mf.ref, notes: mf.notes, receipt })
+      : await call({ action: 'pay', productId: p.id, kind: modal.kind, amount, method: mf.method || rules.pay_methods?.[0], date: mf.date || today(), ref: mf.ref, notes: mf.notes, receipt })
     setBusy(false); if (j.error) return setErr(E(j))
     await load(); close(); setDoc({ type: 'pay', id: p.id, no: j.result })
   }
@@ -204,13 +225,35 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}><div><span className="pm">{L('المشتري', 'Buyer')}</span><br /><b>{p.buyer_name}</b> <span dir="ltr">{p.buyer_phone}</span></div><div><span className="pm">{L('صاحب القطعة', 'Original owner')}</span><br /><b>{oname(p)}</b> <span dir="ltr">{o?.phone}</span></div></div>
       <table className="sm-ptable"><thead><tr><th>{L('البيان', 'Item')}</th><th style={{ textAlign: 'end' }}>{L('المبلغ', 'Amount')}</th></tr></thead><tbody>
         <tr><td><b>{p.name}</b> · <span dir="ltr">{p.code}</span> · {methodName(p.method)}<br /><span className="pm">{L('سعر البيع النهائي', 'Final selling price')}</span></td><td style={{ textAlign: 'end' }}><b>{M(f.price)}</b></td></tr>
+        {f.sup > 0 && <><tr><td>{L('مدفوع من الداعمين', 'Covered by supporters')} <span className="pm">({sups.filter(x => x.product_id === p.id).map(x => x.supporter_name).join('، ')})</span></td><td style={{ textAlign: 'end' }}>− {M(f.sup)}</td></tr>
+          <tr className="tot"><td>{L('المستحق على المشتري', 'Due from the buyer')}</td><td style={{ textAlign: 'end' }}>{M(f.bShare)}</td></tr></>}
         {p.owner_id && <><tr><td>{L('العمولة', 'Commission')} <span className="pm">({whyText(p)})</span></td><td style={{ textAlign: 'end' }}>{M(f.comm)}</td></tr>
           <tr><td>{L('رسوم الإدراج', 'Listing fee')} {p.listing_upfront && <span className="pm">{L('(مدفوعة مسبقاً)', '(paid upfront)')}</span>}</td><td style={{ textAlign: 'end' }}>{M(f.listing)}</td></tr>
           <tr><td>{L('إجمالي رسوم المزاد', 'Total auction fees')}</td><td style={{ textAlign: 'end' }}>{M(f.comm + f.listing)}</td></tr>
           <tr className="tot"><td>{L('صافي المستحق لصاحب القطعة', 'Net payable to the original owner')}</td><td style={{ textAlign: 'end' }}>{M(f.net)}</td></tr></>}
       </tbody></table><Foot /></> } }
-    if (d.type === 'pay' && p) { const x = pays.find(y => y.no === d.no && y.product_id === p.id); if (!x) return null; const b = x.kind === 'buyer', f = fin(p), o = O(p.owner_id)
-      const upto = pays.filter(y => y.product_id === p.id && y.kind === x.kind && y.created_at <= x.created_at).reduce((n, y) => n + Number(y.amount_fils), 0), rem = Math.max(0, (b ? f.price : f.net) - upto)
+    if (d.type === 'sp') { const s0 = sups.find(x => x.id === d.sid); const q = s0 && prods.find(x => x.id === s0.product_id); if (!s0 || !q) return null; const hist = pays.filter(x => x.support_id === s0.id)
+      return { name: s0.inv_no, node: <><Top title={L('فاتورة دعم', 'Support Invoice')} no={s0.inv_no} date={fdate(q.sold_on)} />
+        <table className="sm-ptable"><tbody>
+          <tr><td className="pm">{L('الداعم', 'Supporter')}</td><td><b>{s0.supporter_name}</b> <span dir="ltr">{s0.supporter_phone || ''}</span></td></tr>
+          <tr><td className="pm">{L('دعم الفائز', 'Supported the winner')}</td><td><b>{s0.winner_name}</b></td></tr>
+          <tr><td className="pm">{L('القطعة', 'Product')}</td><td>{q.name} · <span dir="ltr">{q.code}</span></td></tr>
+          <tr className="tot"><td>{L('مبلغ الدعم', 'Support amount')}</td><td>{M(s0.amount_fils)}</td></tr></tbody></table>
+        <div className="pm" style={{ margin: '14px 0 4px' }}>{L('الدفعات', 'Payments')}</div>
+        <table className="sm-ptable"><tbody>{hist.length === 0 && <tr><td className="pm">{L('لا توجد دفعات مسجلة بعد', 'No payments recorded yet')}</td></tr>}
+          {hist.map(x => <tr key={x.id}><td dir="ltr">{x.no}</td><td>{fdate(x.paid_on)}{x.reversal_of ? ' · ' + L('عكس', 'reversal') : ''}</td><td style={{ textAlign: 'end' }}>{M(x.amount_fils)}</td></tr>)}
+          <tr className="tot"><td colSpan={2}>{L('المتبقي', 'Balance due')}</td><td style={{ textAlign: 'end' }}>{M(spDue(s0))}</td></tr></tbody></table><Foot /></> } }
+    if (d.type === 'pay' && p) { const x = pays.find(y => y.no === d.no && y.product_id === p.id); if (!x) return null; const b = x.kind === 'buyer', sx = x.kind === 'supporter' ? sups.find(y => y.id === x.support_id) : null, f = fin(p), o = O(p.owner_id)
+      if (sx) { const upto = pays.filter(y => y.support_id === sx.id && y.created_at <= x.created_at).reduce((n, y) => n + Number(y.amount_fils), 0)
+        return { name: x.no, node: <><Top title={L('سند قبض من داعم', 'Supporter Payment Receipt')} no={x.no} date={fdate(x.paid_on)} />
+          <table className="sm-ptable"><tbody>
+            <tr><td className="pm">{L('استلمنا من', 'Received from')}</td><td><b>{sx.supporter_name}</b> <span dir="ltr">{sx.supporter_phone || ''}</span></td></tr>
+            <tr><td className="pm">{L('دعماً للفائز', 'In support of the winner')}</td><td><b>{sx.winner_name}</b></td></tr>
+            <tr><td className="pm">{L('عن القطعة', 'For product')}</td><td>{p.name} · <span dir="ltr">{p.code}</span> · {L('فاتورة الدعم', 'support invoice')} <span dir="ltr">{sx.inv_no}</span></td></tr>
+            <tr><td className="pm">{L('المبلغ', 'Amount')}</td><td><b style={{ fontSize: 17 }}>{M(x.amount_fils)}</b></td></tr>
+            <tr><td className="pm">{L('طريقة الدفع', 'Payment method')}</td><td>{payName(x.method)}{x.ref ? <> · {L('مرجع', 'ref')} <span dir="ltr">{x.ref}</span></> : null}</td></tr>
+            <tr><td className="pm">{L('الرصيد المتبقي بعد هذه الدفعة', 'Balance after this payment')}</td><td>{M(Math.max(0, Number(sx.amount_fils) - upto))}</td></tr></tbody></table><Foot /></> } }
+      const upto = pays.filter(y => y.product_id === p.id && y.kind === x.kind && y.created_at <= x.created_at).reduce((n, y) => n + Number(y.amount_fils), 0), rem = Math.max(0, (b ? f.bShare : f.net) - upto)
       return { name: x.no, node: <><Top title={b ? L('سند قبض من المشتري', 'Buyer Payment Receipt') : L('سند دفع لصاحب القطعة', 'Owner Payment Voucher')} no={x.no} date={fdate(x.paid_on)} />
         <table className="sm-ptable"><tbody>
           <tr><td className="pm">{b ? L('استلمنا من', 'Received from') : L('دفعنا إلى', 'Paid to')}</td><td><b>{b ? p.buyer_name : oname(p)}</b> <span dir="ltr">{b ? p.buyer_phone : o?.phone}</span></td></tr>
@@ -231,7 +274,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
         {hist.length > 0 && <><div className="pm" style={{ marginTop: 10 }}>{L('سجل الدفعات', 'Payment history')}</div><table className="sm-ptable"><tbody>{hist.map(x => <tr key={x.id}><td dir="ltr">{x.no}</td><td>{fdate(x.paid_on)}</td><td>{payName(x.method)}{x.reversal_of ? ' · ' + L('عكس', 'reversal') : ''}</td><td style={{ textAlign: 'end' }}>{M(x.amount_fils)}</td></tr>)}</tbody></table></>}<Foot /></> } }
     if (d.type === 'month') { const m = d.month, inM = (x?: string) => !!x && x.startsWith(m); const s = { sales: 0, comm: 0, list: 0, coll: 0, paid: 0, n: 0, rec: 0 }
       for (const q of prods) { const f = fin(q); if (q.stage === 'sold' && inM(q.sold_on)) { s.sales += f.price; s.comm += f.comm; s.n++ } if (inM(q.received_on)) { s.rec++; if (q.listing_when === 'registration') s.list += f.listing } if (q.listing_when === 'sold' && q.stage === 'sold' && inM(q.sold_on)) s.list += f.listing }
-      for (const x of pays) if (inM(x.paid_on)) { if (x.kind === 'buyer') s.coll += Number(x.amount_fils); else s.paid += Number(x.amount_fils) }
+      for (const x of pays) if (inM(x.paid_on)) { if (x.kind === 'buyer' || x.kind === 'supporter') s.coll += Number(x.amount_fils); else s.paid += Number(x.amount_fils) }
       const all = totals(prods); const row = (a: string, b: any, tot = false) => <tr className={tot ? 'tot' : ''}><td>{a}</td><td style={{ textAlign: 'end' }}>{b}</td></tr>
       return { name: 'monthly-' + m, node: <><Top title={L('الكشف المالي الشهري', 'Monthly Financial Statement')} no={'MS-' + m} date={m} />
         <table className="sm-ptable"><tbody>{row(L('القطع المستلمة', 'Products received'), s.rec)}{row(`${L('إجمالي المبيعات', 'Total sales')} (${s.n})`, M(s.sales))}{row(L('إجمالي العمولات', 'Total commissions'), M(s.comm))}{row(L('إجمالي رسوم الإدراج', 'Total listing fees'), M(s.list))}
@@ -279,13 +322,14 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       ['delivery', L('التوصيل', 'Delivery'), pendDel ? pendDel + L(' بانتظار التوصيل', ' awaiting delivery') : L('لا شيء معلّق', 'Nothing pending'), pendDel],
       ['docs', L('المستندات', 'Documents'), nDocs + L(' مستند', ' documents'), 0],
       ['rules', L('قواعد العمولة', 'Commission rules'), L('أمر بيع: ', 'Order Sale: ') + Number(rules.order_pct) + '% ' + L('فوق ', 'above ') + M(rules.order_threshold_fils), 0],
+      ['support', L('مدفوعات الداعمين', 'Supporter payments'), sups.length ? sups.length + L(' داعم', ' supporters') + (sups.some(x => spDue(x) > 0) ? ' · ' + L('متبقٍ ', 'due ') + M(sups.reduce((n, x) => n + spDue(x), 0)) : '') : L('لا يوجد بعد', 'None yet'), sups.filter(x => spDue(x) > 0).length],
       ['sessions', L('الجلسات', 'Sessions'), L('سجل البثوث', 'Live history'), 0]]
     return <>
       <div className="sm-strip section"><button onClick={() => { setF(F0); go('table') }}><span>{L('إجمالي المبيعات', 'Gross sales')}</span><b>{M(t.gross)}</b></button>
         <button onClick={() => quick('due', '')}><span>{L('بانتظار التحصيل', 'To collect')} ›</span><b style={{ color: 'var(--red)' }}>{M(t.bDue)}</b></button>
         <button onClick={() => quick('', 'due')}><span>{L('للملّاك', 'Owed to owners')} ›</span><b>{M(t.oDue)}</b></button></div>
       <div className="sm-hub">{tiles.map(([k, n, h, b]) => <button key={k} className="sm-htile" onClick={() => { if (k === 'table') setF(F0); go(k) }}><span className="sm-bub"><Ic k={k} /></span><b>{n}</b><small>{h}</small>{b > 0 && <span className="sm-badge">{b}</span>}</button>)}</div></> }
-  const NAMES: Record<string, [string, string]> = { home: ['نظرة عامة', 'Overview'], table: ['جدول المبيعات', 'Sales table'], receive: ['استلام قطعة', 'Receive product'], owners: ['أصحاب القطع', 'Owners'], delivery: ['التوصيل', 'Delivery'], docs: ['المستندات', 'Documents'], rules: ['قواعد العمولة', 'Commission rules'], sessions: ['الجلسات', 'Sessions'] }
+  const NAMES: Record<string, [string, string]> = { home: ['نظرة عامة', 'Overview'], table: ['جدول المبيعات', 'Sales table'], receive: ['استلام قطعة', 'Receive product'], owners: ['أصحاب القطع', 'Owners'], delivery: ['التوصيل', 'Delivery'], docs: ['المستندات', 'Documents'], rules: ['قواعد العمولة', 'Commission rules'], sessions: ['الجلسات', 'Sessions'], support: ['مدفوعات الداعمين', 'Supporter payments'] }
   const backTo = view === 'product' ? from : 'hub'
   const nav = view === 'hub' ? null : <div className="sm-backrow section"><button className="sm-backbtn" onClick={() => go(backTo)} aria-label={L('رجوع', 'Back')}><Ic k="back" s={20} /></button><span>{view === 'product' ? L(...(NAMES[from] || NAMES.table)) : L('مبيعاتي', 'My Sales')}</span></div>
 
@@ -355,7 +399,7 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
     if (p.stage === 'sold' && !p.confirmed_at) next = <><b>{L('بيع جديد سُجِّل تلقائياً من المزاد. راجِع البيانات ثم أكِّد.', 'A new sale was recorded automatically from the auction. Review it, then confirm.')}</b><button className="btn gold" style={sm} onClick={() => { setMf({ address: p.del_address || '', buyer_phone: p.buyer_phone || '' }); setErr(''); setModal({ t: 'confirm', id: p.id }) }}>{L('تأكيد البيع', 'Confirm sale')}</button></>
     else if (k === 'listed') next = <><b>{L('القطعة في قائمة المنتجات تحت «', 'The product is in the Products queue under “')}{methodName(p.method)}{L('». افتح المزاد عليها أثناء جلسة مباشرة.', '”. Open it for auction during a live session.')}</b><button className="btn gold" style={sm} onClick={goProducts}>{L('الذهاب إلى المنتجات', 'Go to Products')}</button></>
     else if (k === 'auction') next = <b>{L('القطعة في المزاد الآن. تُسجَّل النتيجة هنا تلقائياً عند الإغلاق.', 'The product is in auction now. The result is recorded here automatically when it closes.')}</b>
-    else if (k === 'await_buyer') next = <><b>{L('الخطوة التالية: تحصيل', 'Next: collect')} {M(f.bDue)} {L('من المشتري', 'from the buyer')}</b><button className="btn gold" style={sm} onClick={() => openPay(p, 'buyer')}>{L('تسجيل دفعة المشتري', 'Record buyer payment')}</button></>
+    else if (k === 'await_buyer') next = f.bDue > 0 ? <><b>{L('الخطوة التالية: تحصيل', 'Next: collect')} {M(f.bDue)} {L('من المشتري', 'from the buyer')}{f.sDue > 0 && <> + {M(f.sDue)} {L('من الداعمين', 'from supporters')}</>}</b><button className="btn gold" style={sm} onClick={() => openPay(p, 'buyer')}>{L('تسجيل دفعة المشتري', 'Record buyer payment')}</button></> : <><b>{L('الخطوة التالية: تحصيل', 'Next: collect')} {M(f.sDue)} {L('من الداعمين', 'from supporters')}</b></>
     else if (k === 'await_owner') next = <><b>{L('الخطوة التالية: دفع', 'Next: pay')} {M(f.oDue)} {L('لصاحب القطعة', 'to the owner')}</b><button className="btn gold" style={sm} onClick={() => openPay(p, 'owner')}>{L('تسجيل دفعة المالك', 'Record owner payment')}</button></>
     else if (k === 'await_delivery') next = <><b>{L('الخطوة التالية: التوصيل', 'Next: delivery')}</b><button className="btn gold" style={sm} onClick={() => openDel(p)}>{L('تحديث التوصيل', 'Update delivery')}</button></>
     else if (k === 'delivered') next = <b>{L('اكتملت دورة هذه القطعة بالكامل', 'This product’s cycle is complete')}</b>
@@ -390,12 +434,14 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
       {f.sold && <><div className="sm-g2 section">
         <div className="card"><div className="row"><h3 style={{ margin: 0 }}>{L('تحصيل المشتري', 'Buyer payment collection')}</h3>{payPill(p)}</div>
           <div className="kv"><span>{L('المشتري', 'Buyer')}</span><b>{p.buyer_name} <span dir="ltr" className="muted">{p.buyer_phone}</span></b></div><div className="kv"><span>{L('تاريخ البيع', 'Sale date')}</span><b>{fdate(p.sold_on)}</b></div>
-          <div className="kv"><span>{L('المبلغ المستحق', 'Amount due')}</span><b>{M(f.price)}</b></div><div className="kv"><span>{L('تم تحصيله', 'Collected')}</span><b>{M(f.bPaid)}</b></div><div className="kv"><span>{L('المتبقي', 'Remaining')}</span><b>{M(f.bDue)}</b></div>
+          {f.sup > 0 && <><div className="kv"><span>{L('سعر البيع', 'Selling price')}</span><b>{M(f.price)}</b></div><div className="kv"><span>{L('يدفعه الداعمون', 'Paid by supporters')}</span><b>− {M(f.sup)}</b></div></>}
+          <div className="kv"><span>{L('المبلغ المستحق على المشتري', 'Amount due from the buyer')}</span><b>{M(f.bShare)}</b></div><div className="kv"><span>{L('تم تحصيله', 'Collected')}</span><b>{M(f.bPaid)}</b></div><div className="kv"><span>{L('المتبقي', 'Remaining')}</span><b>{M(f.bDue)}</b></div>
           {payRows(bp)}<button className="btn gold" style={{ ...sm, marginTop: 12 }} disabled={f.bDue === 0} onClick={() => openPay(p, 'buyer')}>{L('تسجيل دفعة المشتري', 'Record buyer payment')}</button></div>
         {p.owner_id && <div className="card"><div className="row"><h3 style={{ margin: 0 }}>{L('تسوية صاحب القطعة', 'Original owner settlement')}</h3>{setPill(p)}</div>
           <div className="kv"><span>{L('صاحب القطعة', 'Owner')}</span><b>{oname(p)}</b></div><div className="kv"><span>{L('صافي المستحق', 'Net payable')}</span><b>{M(f.net)}</b></div><div className="kv"><span>{L('تم دفعه', 'Paid')}</span><b>{M(f.oPaid)}</b></div><div className="kv"><span>{L('المتبقي', 'Remaining')}</span><b>{M(f.oDue)}</b></div>
-          {payRows(op)}{f.bDue > 0 && <div className="notice" style={{ margin: '10px 0 0' }}>{L('تُفتح التسوية بعد تحصيل كامل المبلغ من المشتري.', 'Settlement opens once the buyer has paid in full.')}</div>}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}><button className="btn gold" style={sm} disabled={f.oDue === 0 || f.bDue > 0} onClick={() => openPay(p, 'owner')}>{L('تسجيل دفعة المالك', 'Record owner payment')}</button><button className="btn light" style={sm} onClick={() => setDoc({ type: 'owner', owner: p.owner_id })}>{L('كشف حساب المالك', 'Owner statement')}</button></div></div>}</div>
+          {payRows(op)}{(f.bDue > 0 || f.sDue > 0) && <div className="notice" style={{ margin: '10px 0 0' }}>{f.sup > 0 ? L('تُفتح التسوية بعد تحصيل كامل المبلغ من المشتري والداعمين.', 'Settlement opens once the buyer and all supporters have paid in full.') : L('تُفتح التسوية بعد تحصيل كامل المبلغ من المشتري.', 'Settlement opens once the buyer has paid in full.')}</div>}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}><button className="btn gold" style={sm} disabled={f.oDue === 0 || f.bDue > 0 || f.sDue > 0} onClick={() => openPay(p, 'owner')}>{L('تسجيل دفعة المالك', 'Record owner payment')}</button><button className="btn light" style={sm} onClick={() => setDoc({ type: 'owner', owner: p.owner_id })}>{L('كشف حساب المالك', 'Owner statement')}</button></div></div>}</div>
+        {sups.some(x => x.product_id === p.id) && <div className="section"><h3 style={{ margin: '0 0 8px' }}>{L('الداعمون (دعموا الفائز)', 'Supporters (backed the winner)')} · {M(f.sup)}</h3><div className="sm-g2">{sups.filter(x => x.product_id === p.id).map(x => supCard(x, false))}</div></div>}
         <div className="card section"><div className="row"><h3 style={{ margin: 0 }}>{L('التوصيل', 'Delivery')}</h3>{delPill(p)}</div>
           <div className="kv"><span>{L('العنوان', 'Address')}</span><b>{p.del_address || '—'}</b></div><div className="kv"><span>{L('شركة التوصيل', 'Delivery company')}</span><b>{p.del_company || '—'}</b></div>
           <div className="kv"><span>{L('رسوم التوصيل', 'Delivery fee')}</span><b>{M(p.del_fee_fils)} · {p.del_payer === 'buyer' ? L('على المشتري', 'buyer pays') : L('على البائع', 'seller pays')}</b></div><div className="kv"><span>{L('رقم التتبع', 'Tracking number')}</span><b dir="ltr">{p.del_tracking || '—'}</b></div>
@@ -419,7 +465,8 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
 
   const vDocs = () => { const months = Array.from(new Set<string>([today(), ...prods.flatMap(p => [p.received_on, p.sold_on]), ...pays.map(x => x.paid_on)].filter(Boolean).map((d: string) => d.slice(0, 7)))).sort().reverse()
     const all: any[] = [...prods.map(p => [p.received_on, p.rr_no, L('إيصال استلام', 'Receiving receipt'), p, { type: 'rr', id: p.id }]), ...prods.filter(p => p.inv_no).map(p => [p.sold_on, p.inv_no, L('فاتورة بيع', 'Sales invoice'), p, { type: 'inv', id: p.id }]),
-      ...pays.filter(x => !x.reversal_of).map(x => { const p = prods.find(q => q.id === x.product_id); return p ? [x.paid_on, x.no, x.kind === 'buyer' ? L('سند قبض من المشتري', 'Buyer payment receipt') : L('سند دفع للمالك', 'Owner payment voucher'), p, { type: 'pay', id: p.id, no: x.no }] : null }).filter(Boolean)].sort((a: any, b: any) => String(b[0]).localeCompare(String(a[0])))
+      ...sups.map(x => { const p = prods.find(q => q.id === x.product_id); return p ? [p.sold_on, x.inv_no, L('فاتورة دعم · ', 'Support invoice · ') + x.supporter_name, p, { type: 'sp', sid: x.id }] : null }).filter(Boolean),
+      ...pays.filter(x => !x.reversal_of).map(x => { const p = prods.find(q => q.id === x.product_id); return p ? [x.paid_on, x.no, x.kind === 'buyer' ? L('سند قبض من المشتري', 'Buyer payment receipt') : x.kind === 'supporter' ? L('سند قبض من داعم', 'Supporter payment receipt') : L('سند دفع للمالك', 'Owner payment voucher'), p, { type: 'pay', id: p.id, no: x.no }] : null }).filter(Boolean)].sort((a: any, b: any) => String(b[0]).localeCompare(String(a[0])))
     return <><h2 className="section" style={{ margin: '0 0 14px' }}>{L('المستندات والكشوف', 'Documents & statements')}</h2>
       <div className="sm-g2 section"><div className="card"><h3>{L('الكشف المالي الشهري', 'Monthly financial statement')}</h3><label>{L('الشهر', 'Month')}</label><select value={month} onChange={e => setMonth(e.target.value)}>{months.map(m => <option key={m} value={m}>{m}</option>)}</select><button className="btn gold full" onClick={() => setDoc({ type: 'month', month })}>{L('عرض الكشف', 'View statement')}</button></div>
         <div className="card"><h3>{L('كشوف أصحاب القطع', 'Owner statements')}</h3>{owners.length === 0 && <div className="muted">—</div>}{owners.map(o => <div className="kv" key={o.id} style={{ alignItems: 'center' }}><span>{o.name}</span><button className="btn light" style={{ padding: '6px 10px', fontSize: 13 }} onClick={() => setDoc({ type: 'owner', owner: o.id })}>{L('عرض', 'View')}</button></div>)}</div></div>
@@ -453,11 +500,11 @@ export default function SalesManager({ v, lang, say, view, setView, sig, onChang
   const mp = modal?.id ? prods.find(x => x.id === modal.id) : null, d = doc ? docBody(doc) : null
   return <div className="sm">
     {nav}
-    {view === 'hub' && vHub()}{view === 'home' && vHome()}{view === 'table' && vTable()}{view === 'receive' && vReceive()}{view === 'product' && vProduct()}{view === 'owners' && vOwners()}{view === 'delivery' && vDelivery()}{view === 'docs' && vDocs()}{view === 'rules' && vRules()}{view === 'sessions' && sessions}
+    {view === 'hub' && vHub()}{view === 'home' && vHome()}{view === 'table' && vTable()}{view === 'receive' && vReceive()}{view === 'product' && vProduct()}{view === 'owners' && vOwners()}{view === 'delivery' && vDelivery()}{view === 'docs' && vDocs()}{view === 'rules' && vRules()}{view === 'support' && vSupport()}{view === 'sessions' && sessions}
 
     {modal && <div className="sm-modal" onClick={close}><div className="sm-sheet" onClick={e => e.stopPropagation()}>
-      {modal.t === 'pay' && mp && <><h3>{modal.kind === 'buyer' ? L('تسجيل دفعة المشتري', 'Record buyer payment') : L('تسجيل دفعة صاحب القطعة', 'Record owner payment')}</h3>
-        <div className="sm-tile"><span>{mp.name} · {modal.kind === 'buyer' ? mp.buyer_name : oname(mp)}</span><b>{L('المتبقي', 'Remaining')}: {M(modal.kind === 'buyer' ? fin(mp).bDue : fin(mp).oDue)}</b></div>
+      {modal.t === 'pay' && mp && <><h3>{modal.kind === 'buyer' ? L('تسجيل دفعة المشتري', 'Record buyer payment') : modal.kind === 'supporter' ? L('تسجيل دفعة الداعم', 'Record supporter payment') : L('تسجيل دفعة صاحب القطعة', 'Record owner payment')}</h3>
+        {(() => { const ms = modal.kind === 'supporter' ? sups.find(x => x.id === modal.sid) : null; return <div className="sm-tile"><span>{mp.name} · {modal.kind === 'buyer' ? mp.buyer_name : ms ? ms.supporter_name : oname(mp)}</span><b>{L('المتبقي', 'Remaining')}: {M(modal.kind === 'buyer' ? fin(mp).bDue : ms ? spDue(ms) : fin(mp).oDue)}</b></div> })()}
         <label>{L('المبلغ', 'Amount')} ({cur})</label><input inputMode="decimal" value={mf.amt} onChange={e => setMf({ ...mf, amt: e.target.value })} />
         <div className="sm-g2"><div><label>{L('طريقة الدفع', 'Payment method')}</label><select value={mf.method} onChange={e => setMf({ ...mf, method: e.target.value })}>{(rules.pay_methods || ['Cash']).map((m: string) => <option key={m} value={m}>{payName(m)}</option>)}</select></div><div><label>{L('تاريخ الدفع', 'Payment date')}</label><input type="date" value={mf.date} max={today()} onChange={e => setMf({ ...mf, date: e.target.value })} /></div></div>
         <label>{L('مرجع العملية', 'Transaction reference')}</label><input dir="ltr" value={mf.ref} onChange={e => setMf({ ...mf, ref: e.target.value })} />

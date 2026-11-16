@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   switch (b.action) {
     case 'receive': r = await db.rpc('sm_receive', { p_user: u.id, p: b.data || {} }); break
     case 'pay': r = await db.rpc('sm_pay', { p_user: u.id, p_product: b.productId, p_kind: b.kind, p_amount: b.amount, p_method: b.method || null, p_date: b.date || null, p_ref: b.ref || null, p_notes: b.notes || null, p_receipt: b.receipt || null }); break
+    case 'pay_support': r = await db.rpc('sm_pay_support', { p_user: u.id, p_support: b.supportId, p_amount: b.amount, p_method: b.method || null, p_date: b.date || null, p_ref: b.ref || null, p_notes: b.notes || null, p_receipt: b.receipt || null }); break
     case 'reverse': r = await db.rpc('sm_reverse', { p_user: u.id, p_payment: b.paymentId, p_reason: b.reason || '' }); break
     case 'delivery': r = await db.rpc('sm_delivery', { p_user: u.id, p_product: b.productId, p: b.data || {} }); break
     case 'act': r = await db.rpc('sm_action', { p_user: u.id, p_product: b.productId, p_action: b.name, p: b.data || {} }); break

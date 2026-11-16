@@ -86,7 +86,7 @@ export default function Profile({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'flex', gap: 8, margin: '20px 0 10px' }}>
             <button className={'btn ' + (tab === 'buys' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setPtab('buys')}>{t('purchases')}</button>
             {hasOwned && <button className={'btn ' + (tab === 'owned' ? 'gold' : 'light')} style={{ flex: 1 }} onClick={() => setPtab('owned')}>{L('مبيعاتي', 'My sales')} ({owned.length})</button>}</div>
-          {tab === 'buys' && (buyList ? <div className="bidlist">{buyList.map((x: any) => { const paid = sum(x.pays), due = Math.max(0, Number(x.price) - paid), d = DEL[x.del_status] || DEL.none
+          {tab === 'buys' && (buyList ? <div className="bidlist">{buyList.map((x: any) => { const paid = sum(x.pays), due = Math.max(0, Number(x.price) - Number(x.support || 0) - paid), d = DEL[x.del_status] || DEL.none
             return <button key={x.id} className="person" style={{ width: '100%', textAlign: 'start', cursor: 'pointer' }} onClick={() => setInv(x)}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}><Thumb x={x} />
                 <div style={{ minWidth: 0 }}><b>{x.name}</b><br /><small className="muted">{x.vendor} · {fd(x.sold_on)}</small><br />
@@ -112,13 +112,14 @@ export default function Profile({ onClose }: { onClose: () => void }) {
                 {(x.pays || []).map((y: any) => <div className="kv" key={y.no}><span dir="ltr">{y.no} · {fd(y.paid_on)}{y.rev ? ' · ' + L('عكس', 'reversal') : ''}</span><b>{M(y.amount, x.currency)}</b></div>)}</>
                 : <div className="kv"><span>{L('تاريخ الاستلام', 'Date received')}</span><b>{fd(x.received_on)}</b></div>}</div> })}</div>}
           {inv && <div className="sm-modal sm-docmodal" style={{ zIndex: 90 }} onClick={() => setInv(null)}><div className="sm-sheet wide" onClick={e => e.stopPropagation()}>
-            {(() => { const paid = sum(inv.pays), due = Math.max(0, Number(inv.price) - paid); return <div className="sm-paper" ref={paper} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            {(() => { const paid = sum(inv.pays), due = Math.max(0, Number(inv.price) - Number(inv.support || 0) - paid); return <div className="sm-paper" ref={paper} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
               <div className="sm-ptop"><div><div style={{ fontWeight: 700, fontSize: 18 }}>{inv.vendor}</div><div className="pm" dir="ltr">mazadboss.netlify.app/{inv.slug}</div></div>
                 <div style={{ textAlign: 'end' }}><div style={{ fontWeight: 700, fontSize: 17 }}>{L('فاتورة', 'Invoice')}</div><div className="pm">{L('رقم', 'No.')} <b dir="ltr">{inv.inv_no}</b><br />{fd(inv.sold_on)}</div></div></div>
               <p style={{ margin: '0 0 10px' }}><span className="pm">{L('المشتري', 'Buyer')}</span><br /><b>{inv.buyer}</b></p>
               <table className="sm-ptable"><thead><tr><th>{L('البيان', 'Item')}</th><th style={{ textAlign: 'end' }}>{L('المبلغ', 'Amount')}</th></tr></thead><tbody>
                 <tr><td><b>{inv.name}</b> · <span dir="ltr">{inv.code}</span></td><td style={{ textAlign: 'end' }}><b>{M(inv.price, inv.currency)}</b></td></tr>
-                <tr className="tot"><td>{L('الإجمالي', 'Total')}</td><td style={{ textAlign: 'end' }}>{M(inv.price, inv.currency)}</td></tr></tbody></table>
+                {Number(inv.support) > 0 && <tr><td>{L('مدفوع من الداعمين', 'Covered by supporters')}</td><td style={{ textAlign: 'end' }}>− {M(inv.support, inv.currency)}</td></tr>}
+                <tr className="tot"><td>{L('المستحق عليك', 'Your total')}</td><td style={{ textAlign: 'end' }}>{M(Number(inv.price) - Number(inv.support || 0), inv.currency)}</td></tr></tbody></table>
               <div className="pm" style={{ margin: '14px 0 4px' }}>{L('الدفعات', 'Payments')}</div>
               <table className="sm-ptable"><tbody>{(inv.pays || []).length === 0 && <tr><td className="pm">{L('لا توجد دفعات مسجلة بعد', 'No payments recorded yet')}</td></tr>}
                 {(inv.pays || []).map((y: any) => <tr key={y.no}><td dir="ltr">{y.no}</td><td>{fd(y.paid_on)}{y.rev ? ' · ' + L('عكس', 'reversal') : ''}</td><td style={{ textAlign: 'end' }}>{M(y.amount, inv.currency)}</td></tr>)}

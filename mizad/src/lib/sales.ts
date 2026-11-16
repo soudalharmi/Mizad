@@ -15,16 +15,19 @@ export function fin(p: any, pays: any[]) {
   const listing = p.owner_id && (p.listing_when === 'registration' || sold) ? Number(p.listing_fee_fils || 0) : 0
   const listingDeduct = p.listing_upfront ? 0 : listing
   const net = sold ? Number(p.net_fils || 0) : 0
-  let bPaid = 0, oPaid = 0
-  for (const x of pays) if (x.product_id === p.id) { if (x.kind === 'buyer') bPaid += Number(x.amount_fils); else oPaid += Number(x.amount_fils) }
-  return { sold, price, comm, listing, listingDeduct, net, bPaid, oPaid, bDue: Math.max(0, price - bPaid), oDue: Math.max(0, net - oPaid), feeOwed: !sold && !p.listing_upfront ? listing : 0 }
+  // supporters of the winner pay part of the price; the buyer pays the rest
+  const sup = sold ? Number(p.support_fils || 0) : 0
+  let bPaid = 0, oPaid = 0, sPaid = 0
+  for (const x of pays) if (x.product_id === p.id) { const a = Number(x.amount_fils); if (x.kind === 'buyer') bPaid += a; else if (x.kind === 'supporter') sPaid += a; else oPaid += a }
+  const bShare = Math.max(0, price - sup)
+  return { sold, price, comm, listing, listingDeduct, net, sup, bShare, bPaid, sPaid, oPaid, bDue: Math.max(0, bShare - bPaid), sDue: Math.max(0, sup - sPaid), oDue: Math.max(0, net - oPaid), feeOwed: !sold && !p.listing_upfront ? listing : 0 }
 }
 
 // One automatic status for the whole life of a product. It follows the recorded transactions.
 export function life(p: any, pays: any[]) {
   if (p.stage !== 'sold') return p.stage as string
   const f = fin(p, pays)
-  if (f.bDue > 0) return 'await_buyer'
+  if (f.bDue > 0 || f.sDue > 0) return 'await_buyer'
   if (f.oDue > 0) return 'await_owner'
   if (p.del_status !== 'delivered') return 'await_delivery'
   return 'delivered'
@@ -32,7 +35,7 @@ export function life(p: any, pays: any[]) {
 
 export const LIFE: Record<string, [string, string, string]> = {
   listed: ['تم الاستلام والإدراج', 'Received and listed', ''], auction: ['في المزاد', 'In auction', 'gold'],
-  await_buyer: ['بانتظار تحصيل المبلغ من المشتري', 'Awaiting buyer payment', 'gold'], await_owner: ['بانتظار تحويل مستحقات صاحب القطعة', 'Awaiting owner settlement', 'gold'],
+  await_buyer: ['بانتظار تحصيل المبلغ', 'Awaiting payment', 'gold'], await_owner: ['بانتظار تحويل مستحقات صاحب القطعة', 'Awaiting owner settlement', 'gold'],
   await_delivery: ['بانتظار التوصيل', 'Awaiting delivery', ''], delivered: ['تم التوصيل · مكتمل', 'Delivered · complete', 'green'],
   unsold: ['لم يتم البيع', 'Unsold', 'red'], cancelled: ['ملغي', 'Cancelled', 'red'],
 }
