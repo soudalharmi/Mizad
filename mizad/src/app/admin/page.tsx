@@ -24,11 +24,11 @@ export default async function Page() {
   }))
   outstanding.sort((a, b) => b.amount_fils - a.amount_fils)
   const [pl, cd, sv, rev] = await Promise.all([
-    db.from('sub_plans').select('*').order('months'),
+    db.from('sub_plans').select('*').order('tier').order('months'),
     db.from('discount_codes').select('*').order('created_at', { ascending: false }),
-    db.from('vendors').select('id,sub_until'),
+    db.from('vendors').select('id,sub_until,plan_tier'),
     db.from('payments').select('amount_fils').eq('kind', 'subscription').eq('status', 'captured')])
-  const subs = Object.fromEntries((sv.data || []).map((x: any) => [x.id, x.sub_until]))
+  const subs = Object.fromEntries((sv.data || []).map((x: any) => [x.id, x.sub_until])), tiers = Object.fromEntries((sv.data || []).map((x: any) => [x.id, x.plan_tier]))
   const subRev = (rev.data || []).reduce((n: number, x: any) => n + Number(x.amount_fils), 0)
-  return <AdminClient overview={overview} settings={settings} outstanding={outstanding} plans={pl.data || []} codes={cd.data || []} subs={subs} subRev={subRev} />
+  return <AdminClient overview={overview} settings={settings} outstanding={outstanding} plans={pl.data || []} codes={cd.data || []} subs={subs} tiers={tiers} subRev={subRev} />
 }

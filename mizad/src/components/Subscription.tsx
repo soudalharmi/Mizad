@@ -7,17 +7,19 @@ import { fmt } from '@/lib/money'
 const DAY = 86400000
 export function daysLeft(until?: string | null) { return until ? Math.max(0, Math.ceil((+new Date(until) - Date.now()) / DAY)) : 0 }
 
-export default function Subscription({ lang, locked, onClose }: { lang: string; locked?: boolean; onClose?: () => void }) {
+export default function Subscription({ lang, locked, onClose, wantTier }: { lang: string; locked?: boolean; onClose?: () => void; wantTier?: 'full' | 'semi' }) {
   const L = (a: string, e: string) => (lang === 'ar' ? a : e)
   const M = (f: number) => fmt(Number(f || 0), lang, 'AED')
   const fd = (d?: string) => (d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
   const [s, setS] = useState<any>(null), [pick, setPick] = useState(0), [code, setCode] = useState(''), [quote, setQuote] = useState<any>(null)
-  const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
-  useEffect(() => { fetch('/api/vendor/subscription').then(r => r.json()).then(j => { if (j.ok) { setS(j); setPick(j.plans.find((p: any) => p.months === 12)?.months || j.plans[0]?.months || 0) } }).catch(() => {}) }, [])
-  useEffect(() => { setQuote(null); setErr('') }, [pick])
+  const [err, setErr] = useState(''), [busy, setBusy] = useState(false), [tier, setTier] = useState<'full' | 'semi'>(wantTier || 'full')
+  useEffect(() => { fetch('/api/vendor/subscription').then(r => r.json()).then(j => { if (j.ok) { setS(j); if (!wantTier && j.plan_tier && j.status === 'active') setTier(j.plan_tier); setPick(12) } }).catch(() => {}) }, [])
+  useEffect(() => { setQuote(null); setErr('') }, [pick, tier])
   if (!s) return <div className="card"><div className="empty">…</div></div>
-  const plan = s.plans.find((p: any) => p.months === pick)
-  const shown = quote && quote.months === pick ? quote : plan
+  const tplans = s.plans.filter((p: any) => (p.tier || 'full') === tier)
+  const plan = tplans.find((p: any) => p.months === pick) || tplans[0]
+  if (plan && plan.months !== pick) setTimeout(() => setPick(plan.months))
+  const shown = quote && quote.months === pick && quote.tier === tier ? quote : plan
   const left = daysLeft(s.sub_until), active = s.status === 'active' && left > 0
   const cur = s.history.find((h: any) => new Date(h.starts_at) <= new Date() && new Date(h.ends_at) > new Date()) || s.history[0]
   const onTrial = cur?.kind === 'trial'
@@ -27,13 +29,13 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
   const apply = async () => {
     if (!code.trim()) return
     setBusy(true); setErr('')
-    const j = await (await fetch('/api/vendor/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ months: pick, code: code.trim() }) })).json().catch(() => ({}))
+    const j = await (await fetch('/api/vendor/subscription', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ months: pick, code: code.trim(), tier }) })).json().catch(() => ({}))
     setBusy(false)
     if (j.ok) setQuote(j.quote); else { setQuote(null); setErr(j.error === 'CODE_INVALID' ? L('الكود غير صالح أو منتهي أو لا ينطبق على هذه الباقة', 'This code is not valid, has expired, or does not apply to this plan') : L('تعذر التحقق من الكود', 'Could not check the code')) }
   }
   const pay = async () => {
     setBusy(true); setErr('')
-    const j = await (await fetch('/api/vendor/pay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'subscription', months: pick, code: quote ? code.trim() : '' }) })).json().catch(() => ({}))
+    const j = await (await fetch('/api/vendor/pay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'subscription', months: pick, tier, code: quote ? code.trim() : '' }) })).json().catch(() => ({}))
     if (j.url) { location.href = j.url; return }
     setBusy(false); setErr(j.error === 'CODE_INVALID' ? L('الكود غير صالح', 'Invalid code') : j.error === 'PAY_MIN' ? L('المبلغ أقل من الحد الأدنى للدفع (2 درهم)', 'Amount is below the AED 2 payment minimum') : L('تعذر بدء الدفع', 'Could not start the payment') + (j.detail ? ` (${j.detail})` : ''))
   }
@@ -43,6 +45,16 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
     if (j.ok) { location.href = '/dashboard'; return }
     setBusy(false); setErr(j.error === 'TRIAL_USED' ? L('استخدمت التجربة المجانية من قبل. اختر باقة للمتابعة.', 'You already used the free trial. Choose a plan to continue.') : L('تعذر بدء التجربة', 'Could not start the trial'))
   }
+  const TN = (t: string) => t === 'semi' ? L('إدارة المبيعات', 'Sales Manager') : L('المزاد المباشر', 'Live Auction')
+  const curTier = s.plan_tier || 'full'
+  const upgrading = active && curTier === 'semi' && tier === 'full', downgrading = active && curTier === 'full' && tier === 'semi'
+  const FEAT: Record<string, [string, string, boolean, boolean][]> = { x: [
+    ['استلام القطع وأصحابها والرموز', 'Receive products, owners, codes', true, true],
+    ['تسجيل البيع والداعمين يدوياً', 'Record sales and supporters by hand', true, true],
+    ['كل الفواتير والسندات والكشوف والتسويات', 'All invoices, receipts, statements, settlements', true, true],
+    ['صفحة مزاد مباشر ومزايدات', 'Live auction page and bidding', false, true],
+    ['وضع البث والدعم أونلاين والإشعارات', 'Stream mode, online support, notifications', false, true],
+    ['تسجيل المبيعات تلقائياً من المزاد', 'Sales recorded automatically from the auction', false, true]] }
   const label = (h: any) => ({ paid: L('اشتراك مدفوع', 'Paid'), trial: L('تجربة مجانية', 'Free trial'), admin: L('مُنح من الإدارة', 'Given by admin'), free: L('مجاني بكود خصم', 'Free with code') } as any)[h.kind] || h.kind
   return (
     <div className="subwrap">
@@ -69,9 +81,13 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
         <div className="muted" style={{ textAlign: 'center', marginTop: 10, fontSize: 12 }}>{L('أو اختر باقة مدفوعة بالأسفل', 'or choose a paid plan below')}</div></div>}
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>{active ? L('تمديد الاشتراك', 'Extend your subscription') : L('اختر الباقة', 'Choose a plan')}</h3>
-        {active && <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>{L('المدة الجديدة تُضاف بعد نهاية اشتراكك الحالي، فلا تخسر أي يوم.', 'The new period is added after your current one ends, so you lose no days.')}</p>}
-        <div className="plans">{s.plans.map((p: any) => (
+        <h3 style={{ marginTop: 0 }}>{active ? L('تمديد أو تغيير الباقة', 'Extend or change your plan') : L('اختر الباقة', 'Choose a plan')}</h3>
+        <div className="tiers">{(['full', 'semi'] as const).map(t => <button key={t} className={'tier' + (tier === t ? ' on' : '')} onClick={() => setTier(t)}>
+          <b>{TN(t)}</b><small>{t === 'full' ? L('مزاد مباشر + تسجيل تلقائي', 'Live auctions + automatic sales') : L('تسجيل المبيعات يدوياً', 'Record sales by hand')}</small>
+          <span className="tprice">{M((t === 'full' ? s.month_full : s.month_semi) || 0)} / {L('شهر', 'mo')}</span>{active && curTier === t && <span className="tcur">{L('باقتك الحالية', 'Your plan')}</span>}</button>)}</div>
+        <div className="tfeat">{FEAT.x.map(([a, e, semi, full], i) => <div key={i} className={(tier === 'semi' ? semi : full) ? 'on' : 'off'}>{(tier === 'semi' ? semi : full) ? '✓' : '✕'} {L(a, e)}</div>)}</div>
+        {active && <p className="muted" style={{ fontSize: 13 }}>{upgrading ? L('الترقية تبدأ فوراً، والأيام المتبقية من باقتك الحالية تُحوَّل إلى أيام في الباقة الجديدة.', 'The upgrade starts right away; the days left on your current plan are converted into days on the new one.') : downgrading ? L('تبدأ باقة إدارة المبيعات بعد انتهاء باقتك الحالية، فلا تخسر أي يوم.', 'Sales Manager starts after your current plan ends, so you lose no days.') : L('المدة الجديدة تُضاف بعد نهاية اشتراكك الحالي، فلا تخسر أي يوم.', 'The new period is added after your current one ends, so you lose no days.')}</p>}
+        <div className="plans">{tplans.map((p: any) => (
           <button key={p.months} className={'plan' + (pick === p.months ? ' on' : '')} onClick={() => setPick(p.months)}>
             {Number(p.plan_pct) > 0 && <span className="save">{L('وفّر', 'Save')} {Number(p.plan_pct)}%</span>}
             <b>{name(p.months)}</b>
@@ -96,7 +112,7 @@ export default function Subscription({ lang, locked, onClose }: { lang: string; 
 
       {s.history.length > 0 && <div className="card"><h3 style={{ marginTop: 0 }}>{L('سجل الاشتراك', 'Subscription history')}</h3>
         {s.history.map((h: any, i: number) => <div className="row" key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--line, #e6e2d9)', alignItems: 'flex-start' }}>
-          <div><b>{label(h)}</b>{h.months ? ` · ${name(h.months)}` : h.days ? ` · ${h.days} ${L('يوم', 'days')}` : ''}{h.code ? <> · <span dir="ltr">{h.code}</span></> : null}<br /><small className="muted">{fd(h.starts_at)} → {fd(h.ends_at)}</small></div>
+          <div><b>{label(h)}</b>{h.tier ? ` · ${TN(h.tier)}` : ''}{h.months ? ` · ${name(h.months)}` : h.days ? ` · ${h.days} ${L('يوم', 'days')}` : ''}{h.code ? <> · <span dir="ltr">{h.code}</span></> : null}<br /><small className="muted">{fd(h.starts_at)} → {fd(h.ends_at)}</small></div>
           <b>{h.amount_fils ? M(h.amount_fils) : L('مجاني', 'Free')}</b></div>)}</div>}
       {locked && <p className="muted" style={{ textAlign: 'center', fontSize: 12 }}>{L('حسابات المزايدين مجانية دائماً.', 'Bidder accounts are always free.')}</p>}
     </div>

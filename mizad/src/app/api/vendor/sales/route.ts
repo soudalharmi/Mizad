@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     case 'pay_support': r = await db.rpc('sm_pay_support', { p_user: u.id, p_support: b.supportId, p_amount: b.amount, p_method: b.method || null, p_date: b.date || null, p_ref: b.ref || null, p_notes: b.notes || null, p_receipt: b.receipt || null }); break
     case 'reverse': r = await db.rpc('sm_reverse', { p_user: u.id, p_payment: b.paymentId, p_reason: b.reason || '' }); break
     case 'delivery': r = await db.rpc('sm_delivery', { p_user: u.id, p_product: b.productId, p: b.data || {} }); break
+    case 'manual_sale': r = await db.rpc('sm_manual_sale', { p_user: u.id, p_product: b.productId, p: b.data || {} }); break
     case 'act': r = await db.rpc('sm_action', { p_user: u.id, p_product: b.productId, p_action: b.name, p: b.data || {} }); break
     case 'portal': {
       const v = await db.rpc('sm_vendor', { p_user: u.id }); if (v.error) { r = v; break }
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   }
   // tell the buyer: invoice ready after a confirmed sale, and a receipt after each payment they make
   try {
-    if ((b.action === 'act' && b.name === 'confirm') || (b.action === 'pay' && b.kind === 'buyer')) {
+    if ((b.action === 'act' && b.name === 'confirm') || b.action === 'manual_sale' || (b.action === 'pay' && b.kind === 'buyer')) {
       const { data: p } = await db.from('sale_products').select('name,buyer_user_id,sale_price_fils,vendors(name,currency)').eq('id', b.productId).maybeSingle()
       const vn = (p as any)?.vendors?.name || '', cur = (p as any)?.vendors?.currency
       if (p?.buyer_user_id) {

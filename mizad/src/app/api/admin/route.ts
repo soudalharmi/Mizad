@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const v = b.values
     const { error } = await db.from('platform_settings').update({
       item_fee_fils: v.item_fee_fils, billing_mode: v.billing_mode,
-      sub_month_fils: Math.max(0, Math.round(Number(v.sub_month_fils) || 0)), trial_days: Math.min(365, Math.max(0, Math.round(Number(v.trial_days) || 0))),
+      sub_month_fils: Math.max(0, Math.round(Number(v.sub_month_fils) || 0)), sub_month_semi_fils: Math.max(0, Math.round(Number(v.sub_month_semi_fils) || 0)), trial_days: Math.min(365, Math.max(0, Math.round(Number(v.trial_days) || 0))),
       billing_threshold_fils: v.billing_threshold_fils, min_session_fee_fils: v.min_session_fee_fils ?? 0, updated_at: new Date().toISOString() }).eq('id', 1)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     await db.rpc('audit', { p_vendor: null, p_actor: u.id, p_action: 'settings.updated', p_entity: 'settings', p_id: null, p_data: v })
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     for (const p of (b.plans || []) as any[]) {
       const m = Math.round(Number(p.months)), d = Number(p.discount_pct)
       if (!(m >= 1 && m <= 36) || !(d >= 0 && d <= 100)) return NextResponse.json({ error: 'BAD_PLAN' }, { status: 400 })
-      const { error } = await db.from('sub_plans').upsert({ months: m, discount_pct: d, active: !!p.active })
+      const { error } = await db.from('sub_plans').upsert({ tier: p.tier === 'semi' ? 'semi' : 'full', months: m, discount_pct: d, active: !!p.active })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     }
     await db.rpc('audit', { p_vendor: null, p_actor: u.id, p_action: 'plans.updated', p_entity: 'settings', p_id: null, p_data: { plans: b.plans } })
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const c = b.code || {}, code = String(c.code || '').trim().toUpperCase()
     if (!/^[A-Z0-9-]{3,24}$/.test(code)) return NextResponse.json({ error: 'CODE_FORMAT' }, { status: 400 })
     const row = { code, kind: c.kind === 'fixed' ? 'fixed' : 'percent', value: Number(c.value), max_uses: c.max_uses ? Math.round(Number(c.max_uses)) : null,
-      valid_until: c.valid_until || null, plan_months: c.plan_months ? Number(c.plan_months) : null, note: c.note || null, active: c.active !== false }
+      valid_until: c.valid_until || null, plan_months: c.plan_months ? Number(c.plan_months) : null, tier: c.tier === 'semi' || c.tier === 'full' ? c.tier : null, note: c.note || null, active: c.active !== false }
     if (!(row.value > 0) || (row.kind === 'percent' && row.value > 100)) return NextResponse.json({ error: 'CODE_VALUE' }, { status: 400 })
     const { error } = c.id ? await db.from('discount_codes').update(row).eq('id', c.id) : await db.from('discount_codes').insert(row)
     if (error) return NextResponse.json({ error: error.code === '23505' ? 'CODE_TAKEN' : error.message }, { status: 400 })

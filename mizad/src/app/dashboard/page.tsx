@@ -183,7 +183,11 @@ export default function Dash() {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z" /></svg></Link>
       </div>
 
-      {tab === 'auction' && <>{liveSession ? <div className="section" style={{ background: '#20211f', color: '#fff', borderRadius: 20, padding: '16px 18px' }}>
+      {tab === 'auction' && v.plan_tier === 'semi' && <div className="card upsell"><div style={{ fontSize: 40 }}>🔒</div>
+        <h2>{lang === 'ar' ? 'افتح المزاد المباشر' : 'Unlock live auctions'}</h2>
+        <p className="muted" style={{ maxWidth: 420, margin: '0 auto 16px' }}>{lang === 'ar' ? 'باقتك الحالية «إدارة المبيعات» تتيح تسجيل المبيعات يدوياً. رقِّ باقتك إلى «المزاد المباشر» لتفتح صفحة المزاد والمزايدات ووضع البث، وتُسجَّل مبيعاتك تلقائياً.' : 'Your current Sales Manager plan lets you record sales by hand. Upgrade to Live Auction to open your auction page, live bidding and stream mode, with sales recorded automatically.'}</p>
+        <button className="btn gold" onClick={() => { setTab('billing'); window.scrollTo(0, 0) }}>{lang === 'ar' ? 'ترقية الباقة' : 'Upgrade your plan'}</button></div>}
+      {tab === 'auction' && v.plan_tier !== 'semi' && <>{liveSession ? <div className="section" style={{ background: '#20211f', color: '#fff', borderRadius: 20, padding: '16px 18px' }}>
         <div className="row"><div><span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 600 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#4ec27a' }} />{liveSession.title}</span>
           <div style={{ fontSize: 12, color: '#c9c6bd', marginTop: 2 }}>{t('live_now')} · {t('session_since')} {new Date(liveSession.started_at || liveSession.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-AE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</div></div>
           <button className="btn red" style={{ fontSize: 13 }} onClick={() => { if (confirm(t('end_session') + '?')) sessionAct('end') }}>{t('end_session')}</button></div>
