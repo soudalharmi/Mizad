@@ -151,3 +151,5 @@ a{color:var(--gold)}
 .tier .tcur{position:absolute;top:-10px;inset-inline-end:10px;background:var(--gold);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
 .tfeat{display:grid;gap:5px;margin:4px 0 14px;font-size:13px}.tfeat .on{color:var(--ink)}.tfeat .off{color:var(--muted);text-decoration:line-through;opacity:.75}
 .upsell{text-align:center;padding:30px 20px}.upsell h2{margin:10px 0 6px}
+.sk{height:14px;border-radius:8px;background:linear-gradient(90deg,#efece5 25%,#f8f6f1 50%,#efece5 75%);background-size:200% 100%;animation:skm 1.2s linear infinite}
+@keyframes skm{from{background-position:200% 0}to{background-position:-200% 0}}

@@ -13,9 +13,15 @@ export default function Subscription({ lang, locked, onClose, wantTier }: { lang
   const fd = (d?: string) => (d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
   const [s, setS] = useState<any>(null), [pick, setPick] = useState(0), [code, setCode] = useState(''), [quote, setQuote] = useState<any>(null)
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false), [tier, setTier] = useState<'full' | 'semi'>(wantTier || 'full')
-  useEffect(() => { fetch('/api/vendor/subscription').then(r => r.json()).then(j => { if (j.ok) { setS(j); if (!wantTier && j.plan_tier && j.status === 'active') setTier(j.plan_tier); setPick(12) } }).catch(() => {}) }, [])
+  useEffect(() => {
+    // show the last known plans instantly, then refresh from the server
+    try { const c = JSON.parse(localStorage.getItem('mb_plans') || 'null'); if (c?.plans) { setS({ ...c, loading: true, history: [], status: null }); setPick(12) } } catch {}
+    fetch('/api/vendor/subscription').then(r => r.json()).then(j => { if (j.ok) { setS(j); if (!wantTier && j.plan_tier && j.status === 'active') setTier(j.plan_tier); setPick(p => p || 12); try { localStorage.setItem('mb_plans', JSON.stringify({ plans: j.plans, month_full: j.month_full, month_semi: j.month_semi, trial_days: j.trial_days })) } catch {} } }).catch(() => {})
+  }, [])
   useEffect(() => { setQuote(null); setErr('') }, [pick, tier])
-  if (!s) return <div className="card"><div className="empty">…</div></div>
+  if (!s) return <div className="subwrap"><div className="card subhead"><div className="sk" style={{ width: '40%' }} /><div className="sk" style={{ width: '70%', height: 26, marginTop: 10 }} /></div>
+    <div className="card"><div className="tiers">{[0, 1].map(i => <div key={i} className="tier"><div className="sk" style={{ width: '60%' }} /><div className="sk" style={{ width: '80%', marginTop: 6 }} /></div>)}</div>
+      <div className="plans">{[0, 1, 2, 3].map(i => <div key={i} className="plan" style={{ minHeight: 120 }}><div className="sk" style={{ width: '50%' }} /><div className="sk" style={{ width: '70%', height: 22, marginTop: 8 }} /></div>)}</div></div></div>
   const tplans = s.plans.filter((p: any) => (p.tier || 'full') === tier)
   const plan = tplans.find((p: any) => p.months === pick) || tplans[0]
   if (plan && plan.months !== pick) setTimeout(() => setPick(plan.months))
@@ -58,7 +64,7 @@ export default function Subscription({ lang, locked, onClose, wantTier }: { lang
   const label = (h: any) => ({ paid: L('اشتراك مدفوع', 'Paid'), trial: L('تجربة مجانية', 'Free trial'), admin: L('مُنح من الإدارة', 'Given by admin'), free: L('مجاني بكود خصم', 'Free with code') } as any)[h.kind] || h.kind
   return (
     <div className="subwrap">
-      <div className={'card subhead ' + (active ? (left <= 7 ? 'warn' : 'ok') : 'bad')}>
+      {s.loading ? <div className="card subhead"><div className="sk" style={{ width: '40%' }} /><div className="sk" style={{ width: '70%', height: 26, marginTop: 10 }} /></div> : <div className={'card subhead ' + (active ? (left <= 7 ? 'warn' : 'ok') : 'bad')}>
         {onClose && <button className="btn light" style={{ float: lang === 'ar' ? 'left' : 'right', padding: '4px 10px' }} onClick={onClose}>✕</button>}
         <span className="muted">{L('اشتراكك', 'Your subscription')}</span>
         {active ? <>
@@ -71,9 +77,9 @@ export default function Subscription({ lang, locked, onClose, wantTier }: { lang
           <h2 style={{ margin: '4px 0 6px' }}>{s.status === 'pending_activation' ? L('اختر باقتك للبدء', 'Choose a plan to start') : L('انتهى اشتراكك', 'Your subscription has ended')}</h2>
           <p className="muted" style={{ margin: 0 }}>{s.status === 'pending_activation' ? L('اشترك لتفعيل صفحة مزادك ولوحة التحكم.', 'Subscribe to activate your auction page and dashboard.') : L('لوحة التحكم وصفحة مزادك متوقفتان حتى التجديد. بياناتك محفوظة كما هي.', 'Your dashboard and auction page are paused until you renew. Your data is kept as it is.')}</p>
         </>}
-      </div>
+      </div>}
 
-      {!active && s.trial_available && <div className="card subtrial">
+      {!active && !s.loading && s.trial_available && <div className="card subtrial">
         <span className="save">{L('مجاناً', 'Free')}</span>
         <h3 style={{ margin: '0 0 4px' }}>{L(`جرّب مجاناً ${s.trial_days} أيام`, `Try it free for ${s.trial_days} days`)}</h3>
         <p className="muted" style={{ margin: '0 0 12px' }}>{L('كل المزايا متاحة خلال التجربة، بدون دفع. بعدها تختار الباقة التي تناسبك.', 'Every feature is open during the trial, no payment needed. Afterwards you pick the plan that suits you.')}</p>
@@ -105,7 +111,7 @@ export default function Subscription({ lang, locked, onClose, wantTier }: { lang
           {quote && Number(quote.code_off) > 0 && <div className="row" style={{ color: 'var(--green, #2e9e5b)' }}><span>{L('كود', 'Code')} <b dir="ltr">{quote.code}</b></span><b>− {M(quote.code_off)}</b></div>}
           <div className="row tot"><span>{L('الإجمالي', 'Total')}</span><b>{M(shown.total)}</b></div></div>}
         {err && <div className="notice" style={{ marginTop: 10 }}>{err}</div>}
-        <button className="btn gold full" style={{ marginTop: 12 }} disabled={busy || !plan} onClick={pay}>
+        <button className="btn gold full" style={{ marginTop: 12 }} disabled={busy || !plan || s.loading} onClick={pay}>
           {busy ? '…' : shown && Number(shown.total) === 0 ? L('تفعيل مجاناً', 'Activate for free') : `${L('ادفع', 'Pay')} ${M(shown?.total || 0)}`}</button>
         <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginBottom: 0 }}>{L('الدفع آمن عبر Ziina. رسوم المنتجات والجلسات تبقى كما هي.', 'Secure payment via Ziina. Product and session fees stay as they are.')}</p>
       </div>
