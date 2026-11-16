@@ -23,7 +23,7 @@ export async function getIntent(id: string) {
 // Safe to call many times (the database functions it calls only act once).
 export async function settle(row: any): Promise<boolean> {
   if (!row?.ziina_id) return false
-  if (row.status === 'paid') return true
+  if (row.status === 'paid' && row.kind !== 'subscription') return true // subscriptions re-check: applying is safe to repeat
   const db = admin()
   const it = await getIntent(row.ziina_id)
   if (it.status === 'failed' || it.status === 'canceled') { await db.from('ziina_intents').update({ status: 'failed' }).eq('ref', row.ref).eq('status', 'created'); return false }

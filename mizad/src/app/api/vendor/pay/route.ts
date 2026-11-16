@@ -17,7 +17,9 @@ export async function POST(req: Request) {
     if (ve) return fail('GENERIC', 'vendors: ' + ve.message, 500)
     if (!v) return fail('FORBIDDEN', 'no host page for this account', 403)
     if (!process.env.ZIINA_API_TOKEN) return fail('PAY_UNAVAILABLE', 'ZIINA_API_TOKEN is not set in Netlify', 500)
-    const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin
+    // return to the same site the host paid from (live site or the dev preview)
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host')
+    const site = host ? `https://${host}` : process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin
     let amount = 0, name = '', invoice: string | null = null, k: 'activation' | 'invoice' | 'subscription' = 'invoice', extra: any = {}
 
     if (kind === 'subscription') {
